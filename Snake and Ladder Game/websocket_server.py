@@ -143,6 +143,7 @@ class GameServer:
         # Notify guest
         await websocket.send(json.dumps({
             "type": "session_joined",
+            "session_id": session_id,
             "host_info": session["host_info"]
         }))
 
@@ -207,10 +208,10 @@ async def start_server(host="0.0.0.0", port=8765):
 
     try:
         async with websockets.serve(server.handle_client, host, port):
-            logger.info("Server running. Press Ctrl+C to stop.")
+            logger.info("WebSocket server running. Press Ctrl+C to stop.")
             await asyncio.Future()  # Run forever
     except KeyboardInterrupt:
-        logger.info("Server stopped")
+        logger.info("WebSocket server stopped")
     except Exception as e:
         logger.error(f"Server error: {e}")
 

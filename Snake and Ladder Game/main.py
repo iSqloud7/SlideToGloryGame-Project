@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Snake & Ladder Game - Unified Entry Point
+Snake & Ladder Game - Fixed Unified Entry Point
 Simplified launcher that handles all game components
 """
 
@@ -26,7 +26,7 @@ def check_python_version():
 def check_and_install_dependencies():
     """Check and install required packages"""
     required_packages = {
-        'websockets': 'websockets==12.0',
+        'websockets': 'websockets>=10.0',
         'fastapi': 'fastapi==0.104.1',
         'uvicorn': 'uvicorn==0.24.0',
         'requests': 'requests==2.31.0'
@@ -87,7 +87,6 @@ def start_auth_server():
     try:
         print("🔄 Starting auth server...")
 
-        # Cross-platform process creation
         if platform.system() == "Windows":
             process = subprocess.Popen(
                 [sys.executable, 'auth_server.py'],
@@ -96,7 +95,6 @@ def start_auth_server():
         else:
             process = subprocess.Popen([sys.executable, 'auth_server.py'])
 
-        # Wait for startup
         time.sleep(3)
 
         if process.poll() is None:
@@ -253,11 +251,15 @@ def show_menu():
             elif choice == "4":
                 print("\n📡 Starting WebSocket server...")
                 try:
-                    import websocket_server
+                    # Import and run websocket server directly
                     import asyncio
-                    asyncio.run(websocket_server.start_server())
+                    from websocket_server import start_server
+
+                    asyncio.run(start_server())
                 except KeyboardInterrupt:
                     print("\n🛑 WebSocket server stopped")
+                except Exception as e:
+                    print(f"❌ Error starting WebSocket server: {e}")
                 break
 
             elif choice == "5":

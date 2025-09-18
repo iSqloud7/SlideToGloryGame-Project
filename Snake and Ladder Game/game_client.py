@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Clean Game Client for Snake & Ladder
+Complete Fixed Game Client for Snake & Ladder
 Handles authentication, WebSocket communication, and game UI
 """
 
@@ -13,16 +13,38 @@ import threading
 import time
 import asyncio
 import websockets
+import inspect
 from requests.adapters import HTTPAdapter
 from urllib3.util.retry import Retry
 
 # Import game logic
 from snake_ladder_core import SnakeLadderGame
 
-AUTH_SERVER = "http://localhost:8000"
-WEBSOCKET_SERVER = "ws://localhost:8765"
-# AUTH_SERVER = "https://7571ab1a6de8.ngrok-free.app"
-# WEBSOCKET_SERVER = "wss://8694ea4ed27f.ngrok-free.app"
+# Configuration - UPDATE THESE WITH YOUR ACTUAL NGROK URLs
+AUTH_SERVER = "https://90a0ac0759eb.ngrok-free.app"
+WEBSOCKET_SERVER = "wss://a518a9699261.ngrok-free.app"
+
+
+# Alternative: Read from config file
+def load_server_config():
+    """Load server URLs from config file"""
+    config_file = "server_config.json"
+    if os.path.exists(config_file):
+        try:
+            with open(config_file, 'r') as f:
+                config = json.load(f)
+                return config.get('auth_server'), config.get('websocket_server')
+        except:
+            pass
+    return None, None
+
+
+# Try to load from config
+config_auth, config_ws = load_server_config()
+if config_auth and config_ws:
+    AUTH_SERVER = config_auth
+    WEBSOCKET_SERVER = config_ws
+
 
 class GameClient:
     def __init__(self):
@@ -63,6 +85,7 @@ class GameClient:
         )
         adapter = HTTPAdapter(max_retries=retry_strategy)
         session.mount("http://", adapter)
+        session.mount("https://", adapter)
         return session
 
     def load_local_profile(self):
@@ -89,8 +112,15 @@ class GameClient:
 
     def check_servers(self):
         """Check if servers are running"""
+        print(f"Checking servers...")
+        print(f"Auth server: {AUTH_SERVER}")
+        print(f"WebSocket server: {WEBSOCKET_SERVER}")
+
         auth_ok = self.check_auth_server()
         ws_ok = self.check_websocket_server()
+
+        print(f"Auth server status: {'OK' if auth_ok else 'OFFLINE'}")
+        print(f"WebSocket server status: {'OK' if ws_ok else 'OFFLINE'}")
 
         if auth_ok:
             self.show_login_screen()
@@ -104,7 +134,7 @@ class GameClient:
         else:
             messagebox.showerror(
                 "Servers Offline",
-                "Both auth and WebSocket servers are offline. Only solo play available."
+                f"Both servers are offline.\n\nChecked URLs:\nAuth: {AUTH_SERVER}\nWebSocket: {WEBSOCKET_SERVER}\n\nOnly solo play available."
             )
             self.current_user = "offline"
             self.show_main_menu(solo_only=True)
@@ -112,30 +142,49 @@ class GameClient:
     def check_auth_server(self):
         """Check if auth server is available"""
         try:
-            response = self.http_session.get(f"{AUTH_SERVER}/status", timeout=5)
+            print(f"Testing auth server at: {AUTH_SERVER}")
+            headers = {
+                'ngrok-skip-browser-warning': 'true',
+                'User-Agent': 'SnakeLadderGame/1.0'
+            }
+            response = self.http_session.get(f"{AUTH_SERVER}/status", timeout=10, headers=headers)
+            print(f"Auth server response: {response.status_code}")
             return response.status_code == 200
-        except:
+        except Exception as e:
+            print(f"Auth server check failed: {e}")
             return False
 
     def check_websocket_server(self):
-        """Check if WebSocket server is available"""
+        """Check if WebSocket server is available - Compatible with older versions"""
         try:
-            import asyncio
+            print(f"Testing WebSocket server at: {WEBSOCKET_SERVER}")
 
             async def test_connection():
                 try:
-                    async with websockets.connect(WEBSOCKET_SERVER, open_timeout=3) as ws:
+                    websocket_kwargs = {'open_timeout': 5}
+
+                    # Check if extra_headers is supported
+                    connect_sig = inspect.signature(websockets.connect)
+                    if 'extra_headers' in connect_sig.parameters:
+                        websocket_kwargs['extra_headers'] = {
+                            'User-Agent': 'SnakeLadderGame/1.0'
+                        }
+
+                    async with websockets.connect(WEBSOCKET_SERVER, **websocket_kwargs) as ws:
                         await ws.send('{"type": "ping"}')
                         return True
-                except:
+                except Exception as e:
+                    print(f"WebSocket test error: {e}")
                     return False
 
             loop = asyncio.new_event_loop()
             asyncio.set_event_loop(loop)
             result = loop.run_until_complete(test_connection())
             loop.close()
+            print(f"WebSocket test result: {'OK' if result else 'FAILED'}")
             return result
-        except:
+        except Exception as e:
+            print(f"WebSocket server check failed: {e}")
             return False
 
     def clear_window(self):
@@ -217,10 +266,17 @@ class GameClient:
         self.root.update()
 
         try:
+            headers = {
+                'ngrok-skip-browser-warning': 'true',
+                'User-Agent': 'SnakeLadderGame/1.0',
+                'Content-Type': 'application/json'
+            }
+
             response = self.http_session.post(
                 f"{AUTH_SERVER}/login",
                 json={"username": username, "password": password},
-                timeout=10
+                timeout=15,
+                headers=headers
             )
 
             if response.status_code == 200:
@@ -238,6 +294,7 @@ class GameClient:
         except requests.exceptions.Timeout:
             self.status_label.config(text="Server timeout", fg="#e74c3c")
         except Exception as e:
+            print(f"Login error: {e}")
             self.status_label.config(text="Connection error", fg="#e74c3c")
 
     def handle_register(self):
@@ -261,10 +318,17 @@ class GameClient:
         self.root.update()
 
         try:
+            headers = {
+                'ngrok-skip-browser-warning': 'true',
+                'User-Agent': 'SnakeLadderGame/1.0',
+                'Content-Type': 'application/json'
+            }
+
             response = self.http_session.post(
                 f"{AUTH_SERVER}/register",
                 json={"username": username, "password": password},
-                timeout=10
+                timeout=15,
+                headers=headers
             )
 
             if response.status_code == 200:
@@ -277,6 +341,7 @@ class GameClient:
         except requests.exceptions.Timeout:
             self.status_label.config(text="Server timeout", fg="#e74c3c")
         except Exception as e:
+            print(f"Register error: {e}")
             self.status_label.config(text="Connection error", fg="#e74c3c")
 
     def play_offline(self):
@@ -426,7 +491,8 @@ class GameClient:
         self.start_game(
             mode="solo",
             player_names=[self.display_name, "Bot"],
-            player_avatars=[self.display_avatar, "🤖"]
+            player_avatars=[self.display_avatar, "🤖"],
+            my_player_index=0
         )
 
     def host_multiplayer(self):
@@ -467,7 +533,14 @@ class GameClient:
         """Cancel connection attempt"""
         if self.websocket:
             try:
-                asyncio.create_task(self.websocket.close())
+                def close_websocket():
+                    try:
+                        if hasattr(self.websocket, 'close'):
+                            asyncio.create_task(self.websocket.close())
+                    except:
+                        pass
+
+                threading.Thread(target=close_websocket, daemon=True).start()
             except:
                 pass
             self.websocket = None
@@ -496,9 +569,18 @@ class GameClient:
             self.root.after(0, lambda: messagebox.showerror("Connection Failed", "Failed to join game"))
 
     async def _host_game_async(self):
-        """Async host game logic"""
+        """Async host game logic with version compatibility"""
         try:
-            self.websocket = await websockets.connect(WEBSOCKET_SERVER)
+            websocket_kwargs = {}
+
+            # Check if extra_headers is supported
+            connect_sig = inspect.signature(websockets.connect)
+            if 'extra_headers' in connect_sig.parameters:
+                websocket_kwargs['extra_headers'] = {
+                    'User-Agent': 'SnakeLadderGame/1.0'
+                }
+
+            self.websocket = await websockets.connect(WEBSOCKET_SERVER, **websocket_kwargs)
             self.is_host = True
 
             # Send create session request
@@ -515,9 +597,18 @@ class GameClient:
             print(f"Host async error: {e}")
 
     async def _join_game_async(self, invite_code):
-        """Async join game logic"""
+        """Async join game logic with version compatibility"""
         try:
-            self.websocket = await websockets.connect(WEBSOCKET_SERVER)
+            websocket_kwargs = {}
+
+            # Check if extra_headers is supported
+            connect_sig = inspect.signature(websockets.connect)
+            if 'extra_headers' in connect_sig.parameters:
+                websocket_kwargs['extra_headers'] = {
+                    'User-Agent': 'SnakeLadderGame/1.0'
+                }
+
+            self.websocket = await websockets.connect(WEBSOCKET_SERVER, **websocket_kwargs)
             self.is_host = False
 
             # Send join session request
@@ -589,21 +680,25 @@ class GameClient:
             messagebox.showerror("Error", "Peer information not available")
             return
 
-        # Set up player info
+        # Set up player info - CONSISTENT ORDER FOR BOTH PLAYERS
+        # Host is always player 0, guest is always player 1
         if self.is_host:
             player_names = [self.display_name, self.peer_info.get('name', 'Guest')]
             player_avatars = [self.display_avatar, self.peer_info.get('avatar', '😎')]
+            my_player_index = 0
         else:
             player_names = [self.peer_info.get('name', 'Host'), self.display_name]
             player_avatars = [self.peer_info.get('avatar', '🙂'), self.display_avatar]
+            my_player_index = 1
 
         self.start_game(
             mode="multiplayer",
             player_names=player_names,
-            player_avatars=player_avatars
+            player_avatars=player_avatars,
+            my_player_index=my_player_index
         )
 
-    def start_game(self, mode, player_names, player_avatars):
+    def start_game(self, mode, player_names, player_avatars, my_player_index=0):
         """Start game with specified parameters"""
         # Minimize main window
         self.root.iconify()
@@ -624,6 +719,7 @@ class GameClient:
                 websocket_connection=WebSocketConnection(self.websocket,
                                                          self.session_id) if mode == "multiplayer" else None,
                 is_host=self.is_host if mode == "multiplayer" else True,
+                my_player_index=my_player_index,
                 on_game_end=self.on_game_end
             )
         except Exception as e:
@@ -638,7 +734,14 @@ class GameClient:
         # Close WebSocket connection
         if self.websocket:
             try:
-                asyncio.create_task(self.websocket.close())
+                def close_websocket_async():
+                    try:
+                        if hasattr(self.websocket, 'close'):
+                            asyncio.create_task(self.websocket.close())
+                    except:
+                        pass
+
+                threading.Thread(target=close_websocket_async, daemon=True).start()
             except:
                 pass
             self.websocket = None
@@ -662,7 +765,14 @@ class GameClient:
         finally:
             if self.websocket:
                 try:
-                    asyncio.create_task(self.websocket.close())
+                    def close_websocket_async():
+                        try:
+                            if hasattr(self.websocket, 'close'):
+                                asyncio.create_task(self.websocket.close())
+                        except:
+                            pass
+
+                    threading.Thread(target=close_websocket_async, daemon=True).start()
                 except:
                     pass
 
@@ -670,33 +780,67 @@ class GameClient:
         """Handle application closing"""
         if self.websocket:
             try:
-                asyncio.create_task(self.websocket.close())
+                def close_websocket_async():
+                    try:
+                        if hasattr(self.websocket, 'close'):
+                            asyncio.create_task(self.websocket.close())
+                    except:
+                        pass
+
+                threading.Thread(target=close_websocket_async, daemon=True).start()
             except:
                 pass
         self.root.destroy()
 
 
 class WebSocketConnection:
-    """Helper class for WebSocket communication in game"""
+    """Fixed WebSocket communication class for game synchronization"""
 
     def __init__(self, websocket, session_id):
         self.websocket = websocket
         self.session_id = session_id
 
     def send_message(self, data):
-        """Send game message through WebSocket"""
-        if self.websocket:
-            try:
-                message = {
-                    "type": "game_message",
-                    "session_id": self.session_id,
-                    "data": data
-                }
-                asyncio.create_task(self.websocket.send(json.dumps(message)))
-                return True
-            except:
-                return False
-        return False
+        """Send game message through WebSocket synchronously"""
+        if not self.websocket:
+            print("No websocket connection available")
+            return False
+
+        try:
+            message = {
+                "type": "game_message",
+                "session_id": self.session_id,
+                "data": data
+            }
+
+            print(f"Sending message: {data}")
+
+            # Create a new thread to handle the async send
+            def send_async():
+                try:
+                    # Create new event loop for this thread
+                    loop = asyncio.new_event_loop()
+                    asyncio.set_event_loop(loop)
+
+                    async def do_send():
+                        await self.websocket.send(json.dumps(message))
+
+                    loop.run_until_complete(do_send())
+                    loop.close()
+
+                except Exception as e:
+                    print(f"Error in async send: {e}")
+
+            # Run in separate thread to avoid blocking
+            send_thread = threading.Thread(target=send_async, daemon=True)
+            send_thread.start()
+            send_thread.join(timeout=5.0)  # Wait max 5 seconds
+
+            return True
+
+        except Exception as e:
+            print(f"Error sending message: {e}")
+            return False
 
 
 if __name__ == "__main__":
