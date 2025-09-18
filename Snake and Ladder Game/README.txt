@@ -18,6 +18,7 @@ Terminal 1:
 python main.py
 2
 
+*** MUST HAVE THIS ***
 ===========
 ngrok setup
 ===========
