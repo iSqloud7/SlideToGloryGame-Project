@@ -21,8 +21,8 @@ from snake_ladder_core import SnakeLadderGame
 
 AUTH_SERVER = "http://localhost:8000"
 WEBSOCKET_SERVER = "ws://localhost:8765"
-# AUTH_SERVER = "https://04f9c7fae5d9.ngrok-free.app"
-# WEBSOCKET_SERVER = "wss://9e527f9c70c6.ngrok-free.app"
+# AUTH_SERVER = "https://7571ab1a6de8.ngrok-free.app"
+# WEBSOCKET_SERVER = "wss://8694ea4ed27f.ngrok-free.app"
 
 class GameClient:
     def __init__(self):
