@@ -41,13 +41,13 @@ def check_and_install_dependencies():
             print(f"❌ {package} - missing")
             missing_packages.append(pip_name)
 
-    # Check music packages
+    # Check Music packages
     for package, pip_name in music_packages.items():
         try:
             importlib.import_module(package)
-            print(f"✅ {package} (music support)")
+            print(f"✅ {package} (Music support)")
         except ImportError:
-            print(f"⚠️  {package} - missing (recommended for music)")
+            print(f"⚠️  {package} - missing (recommended for Music)")
             missing_music.append(pip_name)
 
     # Install required packages
@@ -63,10 +63,10 @@ def check_and_install_dependencies():
             print(f"   pip install {' '.join(missing_packages)}")
             return False
 
-    # Offer to install music packages
+    # Offer to install Music packages
     if missing_music:
-        print(f"\n🎵 Optional music packages available: {', '.join(missing_music)}")
-        response = input("Install music support packages? (y/n): ").lower().strip()
+        print(f"\n🎵 Optional Music packages available: {', '.join(missing_music)}")
+        response = input("Install Music support packages? (y/n): ").lower().strip()
         if response == 'y':
             try:
                 subprocess.check_call([
@@ -115,16 +115,16 @@ def check_required_files():
 
 
 def setup_music_directory():
-    """Create music directory and add sample info"""
-    music_dir = "music"
+    """Create Music directory and add sample info"""
+    music_dir = "Music"
     if not os.path.exists(music_dir):
         os.makedirs(music_dir)
-        print(f"📁 Created music directory: {music_dir}")
+        print(f"📁 Created Music directory: {music_dir}")
 
         # Create info file
         info_content = """🎵 Snake & Ladder Game - Music Setup
 
-Add your music files to this directory for background music!
+Add your Music files to this directory for background Music!
 
 Supported formats:
 - .mp3 (recommended)
@@ -133,16 +133,16 @@ Supported formats:
 - .midi (if pygame is installed)
 
 Instructions:
-1. Copy your music files to this 'music' directory
-2. Start the game - music will automatically load
-3. Use the music controls in the main menu
+1. Copy your Music files to this 'Music' directory
+2. Start the game - Music will automatically load
+3. Use the Music controls in the main menu
 
 Tips:
-- Instrumental or ambient music works best
+- Instrumental or ambient Music works best
 - Keep file sizes reasonable (under 10MB each)
 - The game supports playlist mode and shuffle
 
-Sample free music sources:
+Sample free Music sources:
 - Freesound.org (CC licensed)
 - Incompetech.com (royalty-free)
 - Bensound.com (free tracks available)
@@ -158,7 +158,7 @@ Enjoy your musical Snake & Ladder experience!
         music_files = [f for f in os.listdir(music_dir)
                        if f.lower().endswith(('.mp3', '.wav', '.ogg', '.midi'))]
         if music_files:
-            print(f"🎵 Found {len(music_files)} music files")
+            print(f"🎵 Found {len(music_files)} Music files")
         else:
             print(f"📁 Music directory exists but is empty")
 
@@ -217,9 +217,9 @@ def start_websocket_server():
 
 def start_game_client():
     try:
-        print("🎮 Starting game client with music support...")
+        print("🎮 Starting game client with Music support...")
 
-        # Try to import music manager to verify it's available
+        # Try to import Music manager to verify it's available
         try:
             import music_manager
             print("🎵 Music system available")
@@ -280,8 +280,8 @@ def show_menu():
     print("3. 🔐 Start auth server only")
     print("4. 📡 Start WebSocket server only")
     print("5. 🔍 Check server status")
-    print("6. 🎵 Setup music directory")
-    print("7. 📋 Show music info")
+    print("6. 🎵 Setup Music directory")
+    print("7. 📋 Show Music info")
     print("8. ❌ Exit")
     print()
 
@@ -290,7 +290,7 @@ def show_menu():
             choice = input("Enter choice (1-8): ").strip()
 
             if choice == "1":
-                print("\n🚀 Starting complete game with music...")
+                print("\n🚀 Starting complete game with Music...")
 
                 auth_proc = start_auth_server()
                 if not auth_proc:
@@ -350,7 +350,7 @@ def show_menu():
                 input("\nPress Enter to continue...")
 
             elif choice == "6":
-                print("\n🎵 Setting up music directory...")
+                print("\n🎵 Setting up Music directory...")
                 setup_music_directory()
                 input("\nPress Enter to continue...")
 
@@ -374,11 +374,11 @@ def show_menu():
 
 
 def show_music_info():
-    """Display information about the music system"""
+    """Display information about the Music system"""
     print("\n🎵 Music System Status:")
     print("-" * 40)
 
-    # Check if music manager exists
+    # Check if Music manager exists
     if os.path.exists("music_manager.py"):
         print("✅ Music manager: Available")
     else:
@@ -416,8 +416,8 @@ def show_music_info():
         print("   Install pygame for best experience: pip install pygame")
         return
 
-    # Check music directory
-    music_dir = "music"
+    # Check Music directory
+    music_dir = "Music"
     if os.path.exists(music_dir):
         music_files = [f for f in os.listdir(music_dir)
                        if f.lower().endswith(('.mp3', '.wav', '.ogg', '.midi', '.mod'))]
@@ -426,13 +426,13 @@ def show_music_info():
             print("   Formats found:", set(os.path.splitext(f)[1].lower() for f in music_files))
         else:
             print("⚠️  Music directory is empty")
-            print("   Add .mp3, .wav, or .ogg files to enable music")
+            print("   Add .mp3, .wav, or .ogg files to enable Music")
     else:
         print("⚠️  Music directory doesn't exist")
         print("   Run option 6 to create it")
 
     print("\n🎵 Supported Features:")
-    print("- Background music playback")
+    print("- Background Music playback")
     print("- Play/pause/stop controls")
     print("- Volume adjustment")
     print("- Next/previous track")
@@ -459,7 +459,7 @@ def main():
     if not check_and_install_dependencies():
         return
 
-    print("\n🎵 Checking music setup...")
+    print("\n🎵 Checking Music setup...")
     setup_music_directory()
 
     print("\n✅ All requirements met!")

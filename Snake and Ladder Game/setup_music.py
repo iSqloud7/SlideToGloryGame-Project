@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 Setup script for Snake & Ladder Game Music System
-This script will help you quickly set up music functionality
+This script will help you quickly set up Music functionality
 """
 
 import os
@@ -12,8 +12,8 @@ import json
 
 
 def install_pygame():
-    """Install pygame for music support"""
-    print("Installing pygame for music support...")
+    """Install pygame for Music support"""
+    print("Installing pygame for Music support...")
     try:
         subprocess.check_call([sys.executable, "-m", "pip", "install", "pygame>=2.0.0"])
         print("✅ Pygame installed successfully!")
@@ -25,8 +25,8 @@ def install_pygame():
 
 
 def create_music_directory():
-    """Create music directory with sample files info"""
-    music_dir = "music"
+    """Create Music directory with sample files info"""
+    music_dir = "Music"
     if not os.path.exists(music_dir):
         os.makedirs(music_dir)
         print(f"📁 Created directory: {music_dir}")
@@ -38,13 +38,13 @@ def create_music_directory():
     readme_content = """# 🎵 Music Setup for Snake & Ladder Game
 
 ## Quick Start
-1. Add your music files to this directory
+1. Add your Music files to this directory
 2. Supported formats: `.mp3`, `.wav`, `.ogg`, `.midi`
-3. Start the game and enjoy background music!
+3. Start the game and enjoy background Music!
 
 ## Recommended Music Types
 - **Instrumental tracks** - Won't distract from gameplay
-- **Ambient music** - Creates a relaxing atmosphere
+- **Ambient Music** - Creates a relaxing atmosphere
 - **Game soundtracks** - Fits the gaming mood
 - **Classical or acoustic** - Timeless and pleasant
 
@@ -55,22 +55,22 @@ def create_music_directory():
 
 ## Free Music Sources
 - **Freesound.org** - Creative Commons licensed sounds
-- **Incompetech.com** - Royalty-free music by Kevin MacLeod
+- **Incompetech.com** - Royalty-free Music by Kevin MacLeod
 - **Bensound.com** - Free tracks available
-- **OpenGameArt.org** - Game-specific music
-- **YouTube Audio Library** - Free music for projects
+- **OpenGameArt.org** - Game-specific Music
+- **YouTube Audio Library** - Free Music for projects
 
 ## Music Controls in Game
-- **Play/Pause** - Start or pause background music
-- **Stop** - Stop music completely
+- **Play/Pause** - Start or pause background Music
+- **Stop** - Stop Music completely
 - **Next/Previous** - Skip between tracks
-- **Volume** - Adjust music volume (0-100%)
+- **Volume** - Adjust Music volume (0-100%)
 - **Playlist** - View and select specific tracks
 - **Shuffle** - Random track order
 - **Repeat** - Loop single track or entire playlist
 
 ## Troubleshooting
-- **No music plays**: Check if pygame is installed (`pip install pygame`)
+- **No Music plays**: Check if pygame is installed (`pip install pygame`)
 - **Unsupported format**: Convert to MP3, WAV, or OGG
 - **Music too loud**: Use the in-game volume control
 - **Game lag**: Try smaller audio files or lower quality
@@ -93,25 +93,25 @@ Enjoy your musical Snake & Ladder experience! 🎮🎵
 
 
 def download_sample_music():
-    """Offer to download a sample music track"""
-    print("\n🎵 Would you like to download a sample music track?")
+    """Offer to download a sample Music track"""
+    print("\n🎵 Would you like to download a sample Music track?")
     print("This will download a short, free Creative Commons track for testing.")
 
     choice = input("Download sample track? (y/n): ").lower().strip()
     if choice != 'y':
         return
 
-    # Sample free music URL (you'd replace this with an actual CC track)
+    # Sample free Music URL (you'd replace this with an actual CC track)
     sample_url = "https://www.soundjay.com/misc/sounds/bell-ringing-05.wav"  # Example
-    sample_file = "music/sample_track.wav"
+    sample_file = "Music/sample_track.wav"
 
     print("📥 This would download a sample track in a real implementation...")
-    print("For now, please add your own music files to the 'music' directory.")
+    print("For now, please add your own Music files to the 'Music' directory.")
 
 
 def check_music_files():
-    """Check for existing music files"""
-    music_dir = "music"
+    """Check for existing Music files"""
+    music_dir = "Music"
     if not os.path.exists(music_dir):
         return []
 
@@ -207,21 +207,21 @@ def main():
         print("⚠️ Audio system issues detected")
         print("Try: pip install pygame playsound")
 
-    # Create music directory
-    print("\n📁 Setting up music directory...")
+    # Create Music directory
+    print("\n📁 Setting up Music directory...")
     create_music_directory()
 
-    # Check existing music
+    # Check existing Music
     music_files = check_music_files()
     if music_files:
-        print(f"\n🎵 Found {len(music_files)} music files:")
+        print(f"\n🎵 Found {len(music_files)} Music files:")
         for i, file in enumerate(music_files[:5], 1):  # Show first 5
             print(f"   {i}. {file}")
         if len(music_files) > 5:
             print(f"   ... and {len(music_files) - 5} more")
     else:
-        print("\n📭 No music files found")
-        print("Add .mp3, .wav, or .ogg files to the 'music' directory")
+        print("\n📭 No Music files found")
+        print("Add .mp3, .wav, or .ogg files to the 'Music' directory")
 
     # Create config
     print("\n⚙️ Creating configuration...")
@@ -231,22 +231,22 @@ def main():
     print("\n" + "=" * 50)
     print("🎉 Music setup complete!")
     print("\nNext steps:")
-    print("1. Add your music files to the 'music' directory")
+    print("1. Add your Music files to the 'Music' directory")
     print("2. Run the main game: python main.py")
-    print("3. Use music controls in the main menu")
+    print("3. Use Music controls in the main menu")
 
     if not music_files:
         print("\n💡 Tips:")
         print("- MP3 format is recommended for compatibility")
         print("- Keep files under 10MB for smooth performance")
-        print("- Instrumental music works best for gaming")
+        print("- Instrumental Music works best for gaming")
 
     if not audio_ok:
         print("\n⚠️ Audio Issues:")
-        print("Install pygame for best music support:")
+        print("Install pygame for best Music support:")
         print("   pip install pygame")
 
-    print("\n🎮 Happy gaming with music! 🎵")
+    print("\n🎮 Happy gaming with Music! 🎵")
 
 
 if __name__ == "__main__":

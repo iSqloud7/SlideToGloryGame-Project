@@ -7,14 +7,14 @@ import random
 from typing import Optional, List
 import json
 
-# Try to import pygame for music (most reliable option)
+# Try to import pygame for Music (most reliable option)
 try:
     import pygame
 
     PYGAME_AVAILABLE = True
 except ImportError:
     PYGAME_AVAILABLE = False
-    print("pygame not available - music functionality will be limited")
+    print("pygame not available - Music functionality will be limited")
 
 # Try to import playsound as fallback
 try:
@@ -34,7 +34,7 @@ except ImportError:
 
 
 class MusicManager:
-    """Manages background music and sound effects for the game"""
+    """Manages background Music and sound effects for the game"""
 
     def __init__(self):
         self.current_track: Optional[str] = None
@@ -60,7 +60,7 @@ class MusicManager:
         # Load settings
         self.load_settings()
 
-        # Scan for music files
+        # Scan for Music files
         self.scan_music_directory()
 
     def _initialize_audio_system(self) -> str:
@@ -81,8 +81,8 @@ class MusicManager:
 
         return "none"
 
-    def scan_music_directory(self, directory: str = "music"):
-        """Scan for music files in the specified directory"""
+    def scan_music_directory(self, directory: str = "Music"):
+        """Scan for Music files in the specified directory"""
         if not os.path.exists(directory):
             os.makedirs(directory, exist_ok=True)
             self._create_readme_file(directory)
@@ -100,15 +100,15 @@ class MusicManager:
         self.music_tracks.sort()  # Sort alphabetically
 
         if self.music_tracks:
-            print(f"Found {len(self.music_tracks)} music tracks")
+            print(f"Found {len(self.music_tracks)} Music tracks")
         else:
-            print("No music files found. Add .mp3, .wav, or .ogg files to the 'music' directory")
+            print("No Music files found. Add .mp3, .wav, or .ogg files to the 'Music' directory")
 
     def _create_readme_file(self, directory: str):
-        """Create a README file in the music directory"""
+        """Create a README file in the Music directory"""
         readme_content = """Snake & Ladder Game - Music Directory
 
-Place your music files here to add background music to the game!
+Place your Music files here to add background Music to the game!
 
 Supported formats:
 - .mp3 (recommended)
@@ -117,11 +117,11 @@ Supported formats:
 - .midi (if pygame is available)
 
 The game will automatically detect and play these files.
-You can control music playback from the game's music controls.
+You can control Music playback from the game's Music controls.
 
 Tips:
 - Keep file sizes reasonable for smooth gameplay
-- Instrumental or ambient music works best for background
+- Instrumental or ambient Music works best for background
 - The game supports playlist mode and shuffle
 """
 
@@ -132,7 +132,7 @@ Tips:
             pass
 
     def load_settings(self):
-        """Load music settings from file"""
+        """Load Music settings from file"""
         try:
             if os.path.exists("music_settings.json"):
                 with open("music_settings.json", "r") as f:
@@ -143,10 +143,10 @@ Tips:
                     self.repeat_mode = settings.get("repeat_mode", "playlist")
                     self.shuffle_mode = settings.get("shuffle_mode", False)
         except Exception as e:
-            print(f"Error loading music settings: {e}")
+            print(f"Error loading Music settings: {e}")
 
     def save_settings(self):
-        """Save music settings to file"""
+        """Save Music settings to file"""
         try:
             settings = {
                 "volume": self.volume,
@@ -158,10 +158,10 @@ Tips:
             with open("music_settings.json", "w") as f:
                 json.dump(settings, f, indent=2)
         except Exception as e:
-            print(f"Error saving music settings: {e}")
+            print(f"Error saving Music settings: {e}")
 
     def play_music(self, track: Optional[str] = None):
-        """Start playing music"""
+        """Start playing Music"""
         if not self.music_enabled or not self.music_tracks:
             return False
 
@@ -185,7 +185,7 @@ Tips:
         return True
 
     def _music_player_thread(self):
-        """Background thread for music playback"""
+        """Background thread for Music playback"""
         while not self.stop_music_flag.is_set():
             if not self.current_track or not os.path.exists(self.current_track):
                 break
@@ -206,20 +206,20 @@ Tips:
                     self._handle_track_end()
 
             except Exception as e:
-                print(f"Error playing music: {e}")
+                print(f"Error playing Music: {e}")
                 break
 
         self.is_playing = False
         self.is_paused = False
 
     def _play_with_pygame(self):
-        """Play music using pygame"""
+        """Play Music using pygame"""
         try:
             pygame.mixer.music.load(self.current_track)
             pygame.mixer.music.set_volume(self.volume)
             pygame.mixer.music.play()
 
-            # Wait for music to finish or stop signal
+            # Wait for Music to finish or stop signal
             while pygame.mixer.music.get_busy() and not self.stop_music_flag.is_set():
                 if self.is_paused:
                     pygame.mixer.music.pause()
@@ -231,10 +231,10 @@ Tips:
                 time.sleep(0.1)
 
         except Exception as e:
-            print(f"Pygame music error: {e}")
+            print(f"Pygame Music error: {e}")
 
     def _play_with_playsound(self):
-        """Play music using playsound (blocking)"""
+        """Play Music using playsound (blocking)"""
         try:
             # playsound is blocking, so we can't easily implement pause/resume
             playsound(self.current_track, block=True)
@@ -242,7 +242,7 @@ Tips:
             print(f"Playsound error: {e}")
 
     def _play_with_winsound(self):
-        """Play music using winsound (Windows only, limited formats)"""
+        """Play Music using winsound (Windows only, limited formats)"""
         try:
             if self.current_track.lower().endswith('.wav'):
                 winsound.PlaySound(self.current_track,
@@ -278,7 +278,7 @@ Tips:
         self.current_track = self.music_tracks[self.current_track_index]
 
     def pause_music(self):
-        """Pause the currently playing music"""
+        """Pause the currently playing Music"""
         if not self.is_playing or self.is_paused:
             return False
 
@@ -294,7 +294,7 @@ Tips:
         return False
 
     def resume_music(self):
-        """Resume paused music"""
+        """Resume paused Music"""
         if not self.is_playing or not self.is_paused:
             return False
 
@@ -310,7 +310,7 @@ Tips:
         return False
 
     def stop_music(self):
-        """Stop the currently playing music"""
+        """Stop the currently playing Music"""
         self.stop_music_flag.set()
 
         if self.audio_system == "pygame":
@@ -351,7 +351,7 @@ Tips:
         return self.play_music()
 
     def set_volume(self, volume: float):
-        """Set the music volume (0.0 to 1.0)"""
+        """Set the Music volume (0.0 to 1.0)"""
         self.volume = max(0.0, min(1.0, volume))
 
         if self.audio_system == "pygame" and self.is_playing:
@@ -363,7 +363,7 @@ Tips:
         self.save_settings()
 
     def toggle_music(self):
-        """Toggle music on/off"""
+        """Toggle Music on/off"""
         self.music_enabled = not self.music_enabled
         if not self.music_enabled:
             self.stop_music()
@@ -435,7 +435,7 @@ music_manager = None
 
 
 def initialize_music():
-    """Initialize the global music manager"""
+    """Initialize the global Music manager"""
     global music_manager
     if music_manager is None:
         music_manager = MusicManager()
@@ -443,52 +443,52 @@ def initialize_music():
 
 
 def play_background_music():
-    """Start playing background music"""
+    """Start playing background Music"""
     manager = initialize_music()
     return manager.play_music()
 
 
 def pause_music():
-    """Pause background music"""
+    """Pause background Music"""
     if music_manager:
         return music_manager.pause_music()
     return False
 
 
 def resume_music():
-    """Resume background music"""
+    """Resume background Music"""
     if music_manager:
         return music_manager.resume_music()
     return False
 
 
 def stop_music():
-    """Stop background music"""
+    """Stop background Music"""
     if music_manager:
         music_manager.stop_music()
 
 
 def toggle_music():
-    """Toggle music on/off"""
+    """Toggle Music on/off"""
     manager = initialize_music()
     return manager.toggle_music()
 
 
 def set_volume(volume: float):
-    """Set music volume"""
+    """Set Music volume"""
     manager = initialize_music()
     manager.set_volume(volume)
 
 
 def get_music_info():
-    """Get current music information"""
+    """Get current Music information"""
     if music_manager:
         return music_manager.get_current_track_info()
     return {"title": "Music not initialized", "status": "stopped"}
 
 
 if __name__ == "__main__":
-    # Test the music manager
+    # Test the Music manager
     print("Testing Music Manager...")
 
     manager = MusicManager()
@@ -496,7 +496,7 @@ if __name__ == "__main__":
     print(f"Music tracks found: {len(manager.music_tracks)}")
 
     if manager.music_tracks:
-        print("Starting music...")
+        print("Starting Music...")
         manager.play_music()
 
         time.sleep(3)

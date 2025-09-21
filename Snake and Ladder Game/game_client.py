@@ -14,7 +14,7 @@ from urllib3.util.retry import Retry
 from snake_ladder_core import SnakeLadderGame
 from stats import StatsManager, sync_stats_with_server
 
-# Try to import music system
+# Try to import Music system
 try:
     from music_manager import initialize_music, play_background_music, pause_music, resume_music, stop_music, \
         toggle_music, set_volume, get_music_info
@@ -78,7 +78,7 @@ class GameClient:
 
         self.check_servers()
 
-        # Initialize music after server check
+        # Initialize Music after server check
         self.setup_music_controls()
 
     def create_http_session(self):
@@ -114,7 +114,7 @@ class GameClient:
             pass
 
     def setup_music_controls(self):
-        """Initialize music system and setup controls"""
+        """Initialize Music system and setup controls"""
         if not MUSIC_AVAILABLE:
             print("Music system not available")
             return
@@ -124,24 +124,24 @@ class GameClient:
             self.music_initialized = True
             print(f"Music system initialized: {self.music_manager.audio_system}")
 
-            # Start background music if available
+            # Start background Music if available
             if self.music_manager.music_tracks:
                 play_background_music()
-                print(f"Started background music - {len(self.music_manager.music_tracks)} tracks available")
+                print(f"Started background Music - {len(self.music_manager.music_tracks)} tracks available")
             else:
-                print("No music files found. Add music files to the 'music' directory.")
+                print("No Music files found. Add Music files to the 'Music' directory.")
         except Exception as e:
-            print(f"Failed to initialize music: {e}")
+            print(f"Failed to initialize Music: {e}")
             self.music_initialized = False
 
-    def add_music_controls_to_main_menu(self, content):
-        """Add music controls to the main menu"""
+    def add_music_controls_to_frame(self, parent_frame):
+        """Add Music controls to a specific frame"""
         if not self.music_initialized:
             return
 
         # Music controls frame
-        music_frame = tk.Frame(content, bg="#34495e", relief=tk.RAISED, bd=2)
-        music_frame.pack(pady=15, padx=20, fill="x")
+        music_frame = tk.Frame(parent_frame, bg="#34495e", relief=tk.RAISED, bd=2)
+        music_frame.pack(fill="both", expand=True)
 
         tk.Label(music_frame, text="🎵 Music Controls", font=("Arial", 14, "bold"),
                  bg="#34495e", fg="white").pack(pady=8)
@@ -150,7 +150,7 @@ class GameClient:
         self.music_info_label = tk.Label(music_frame, text="Loading...",
                                          font=("Arial", 10),
                                          bg="#34495e", fg="#bdc3c7",
-                                         wraplength=280)
+                                         wraplength=200)
         self.music_info_label.pack(pady=5)
 
         # Control buttons frame
@@ -210,7 +210,7 @@ class GameClient:
                                          width=8)
         self.playlist_button.pack(side=tk.LEFT, padx=2)
 
-        # Start updating music info
+        # Start updating Music info
         self.update_music_info()
 
     def toggle_play_pause(self):
@@ -233,7 +233,7 @@ class GameClient:
                 self.play_pause_button.config(text="⏸️")
 
     def stop_music_action(self):
-        """Stop music playback"""
+        """Stop Music playback"""
         if not self.music_initialized:
             return
 
@@ -273,7 +273,7 @@ class GameClient:
             pass
 
     def toggle_music_action(self):
-        """Toggle music on/off"""
+        """Toggle Music on/off"""
         if not self.music_initialized:
             return
 
@@ -283,7 +283,7 @@ class GameClient:
                                             bg="#9b59b6" if enabled else "#95a5a6")
 
     def show_playlist(self):
-        """Show the music playlist window"""
+        """Show the Music playlist window"""
         if not self.music_initialized:
             return
 
@@ -351,7 +351,7 @@ class GameClient:
                     self.play_pause_button.config(text="⏸️")
 
     def refresh_playlist(self):
-        """Refresh the music playlist"""
+        """Refresh the Music playlist"""
         if self.music_manager:
             self.music_manager.scan_music_directory()
             if hasattr(self, 'playlist_listbox'):
@@ -361,7 +361,7 @@ class GameClient:
                     self.playlist_listbox.insert(tk.END, f"{i + 1}. {track}")
 
     def update_music_info(self):
-        """Update the music information display"""
+        """Update the Music information display"""
         if not self.music_initialized:
             return
 
@@ -767,10 +767,15 @@ class GameClient:
 
     def show_main_menu(self, offline=False, solo_only=False):
         self.clear_window()
-        self.root.geometry("600x800")  # Made taller for music controls
+        self.root.geometry("1000x900")  # Made even wider and taller to ensure everything fits
         self.root.title(f"Snake & Ladder - {self.display_name}")
 
-        header = tk.Frame(self.root, bg="#34495e", height=100)
+        # Main container with scrollable content if needed
+        main_container = tk.Frame(self.root, bg="#2c3e50")
+        main_container.pack(expand=True, fill="both")
+
+        # Header
+        header = tk.Frame(main_container, bg="#34495e", height=100)
         header.pack(fill="x")
         header.pack_propagate(False)
 
@@ -787,72 +792,118 @@ class GameClient:
         tk.Label(header, text=f"Playing as: {self.display_avatar} {self.display_name}",
                  font=("Arial", 14, "bold"), bg="#34495e", fg="#f1c40f").pack(pady=5)
 
-        content = tk.Frame(self.root, bg="#2c3e50", padx=40, pady=30)
+        # Content with proper spacing
+        content = tk.Frame(main_container, bg="#2c3e50", padx=20, pady=20)
         content.pack(expand=True, fill="both")
 
-        tk.Label(content, text="Choose Game Mode", font=("Arial", 18, "bold"),
-                 bg="#2c3e50", fg="white").pack(pady=20)
+        # Main game buttons section (centered at top)
+        main_buttons_frame = tk.Frame(content, bg="#2c3e50")
+        main_buttons_frame.pack(pady=(0, 20))
 
-        tk.Button(content, text="🎮 Play Solo (vs Bot)", font=("Arial", 16, "bold"),
+        tk.Label(main_buttons_frame, text="Choose Game Mode", font=("Arial", 18, "bold"),
+                 bg="#2c3e50", fg="white").pack(pady=(0, 15))
+
+        tk.Button(main_buttons_frame, text="🎮 Play Solo (vs Bot)", font=("Arial", 16, "bold"),
                   command=self.start_solo_game, bg="#e74c3c", fg="white",
-                  padx=25, pady=12, width=25).pack(pady=10)
+                  padx=25, pady=12, width=25).pack(pady=5)
 
         if not solo_only:
-            tk.Button(content, text="🌐 Host Multiplayer Game", font=("Arial", 16, "bold"),
+            tk.Button(main_buttons_frame, text="🌐 Host Multiplayer Game", font=("Arial", 16, "bold"),
                       command=self.host_multiplayer, bg="#27ae60", fg="white",
-                      padx=25, pady=12, width=25).pack(pady=10)
+                      padx=25, pady=12, width=25).pack(pady=5)
 
-            tk.Button(content, text="🔗 Join Multiplayer Game", font=("Arial", 16, "bold"),
+            tk.Button(main_buttons_frame, text="🔗 Join Multiplayer Game", font=("Arial", 16, "bold"),
                       command=self.join_multiplayer, bg="#3498db", fg="white",
-                      padx=25, pady=12, width=25).pack(pady=10)
+                      padx=25, pady=12, width=25).pack(pady=5)
 
-        # Add music controls here
+        # Side-by-side layout for Music and stats with fixed height
+        side_by_side_frame = tk.Frame(content, bg="#2c3e50", height=250)
+        side_by_side_frame.pack(fill="x", pady=(0, 20))
+        side_by_side_frame.pack_propagate(False)
+
+        # Left side - Music controls
+        music_container = tk.Frame(side_by_side_frame, bg="#2c3e50")
+        music_container.pack(side=tk.LEFT, fill="both", expand=True, padx=(0, 10))
+
         if self.music_initialized:
-            self.add_music_controls_to_main_menu(content)
+            self.add_music_controls_to_frame(music_container)
+        else:
+            # Show placeholder if Music not available
+            placeholder = tk.Frame(music_container, bg="#34495e", relief=tk.RAISED, bd=2)
+            placeholder.pack(fill="both", expand=True)
+            tk.Label(placeholder, text="🎵 Music Controls", font=("Arial", 14, "bold"),
+                     bg="#34495e", fg="white").pack(pady=20)
+            tk.Label(placeholder, text="Music system not available", font=("Arial", 10),
+                     bg="#34495e", fg="#bdc3c7").pack()
 
-        button_frame = tk.Frame(content, bg="#2c3e50")
-        button_frame.pack(pady=20)
+        # Right side - Stats
+        stats_container = tk.Frame(side_by_side_frame, bg="#2c3e50")
+        stats_container.pack(side=tk.RIGHT, fill="both", expand=True, padx=(10, 0))
 
-        # First row of buttons
-        top_buttons = tk.Frame(button_frame, bg="#2c3e50")
-        top_buttons.pack(pady=5)
+        if self.stats_manager:
+            self.show_user_stats_in_frame(stats_container)
+        else:
+            # Show placeholder if stats not available
+            placeholder = tk.Frame(stats_container, bg="#34495e", relief=tk.RAISED, bd=2)
+            placeholder.pack(fill="both", expand=True)
+            tk.Label(placeholder, text="📊 Statistics", font=("Arial", 14, "bold"),
+                     bg="#34495e", fg="white").pack(pady=20)
+            tk.Label(placeholder, text="No statistics available", font=("Arial", 10),
+                     bg="#34495e", fg="#bdc3c7").pack()
 
-        tk.Button(top_buttons, text="👤 Edit Profile", command=self.show_profile,
-                  font=("Arial", 12), bg="#9b59b6", fg="white",
-                  padx=15, pady=8, width=12).pack(side=tk.LEFT, padx=5)
+        # BUTTONS SECTION - Three buttons in one row, centered
+        buttons_container = tk.Frame(content, bg="#2c3e50")
+        buttons_container.pack(fill="x", pady=(0, 20))
 
-        tk.Button(top_buttons, text="📊 Detailed Stats", command=self.show_detailed_stats,
-                  font=("Arial", 12), bg="#3498db", fg="white",
-                  padx=15, pady=8, width=12).pack(side=tk.LEFT, padx=5)
+        # Add a separator line for visual clarity
+        separator = tk.Frame(buttons_container, bg="#7f8c8d", height=1)
+        separator.pack(fill="x", pady=(0, 15))
 
-        if not offline and not solo_only:  # Only show for online players
-            tk.Button(top_buttons, text="🏆 Leaderboard", command=self.show_leaderboard,
-                      font=("Arial", 12), bg="#f39c12", fg="white",
-                      padx=15, pady=8, width=12).pack(side=tk.LEFT, padx=5)
+        tk.Label(buttons_container, text="Options & Tools", font=("Arial", 14, "bold"),
+                 bg="#2c3e50", fg="white").pack(pady=(0, 10))
+
+        # Single row with three buttons - using simple pack with side=LEFT
+        button_row = tk.Frame(buttons_container, bg="#2c3e50")
+        button_row.pack()
+
+        tk.Button(button_row, text="👤 Edit Profile", command=self.show_profile,
+                  font=("Arial", 12, "bold"), bg="#9b59b6", fg="white",
+                  padx=15, pady=8, width=20).pack(side=tk.LEFT, padx=5)
+
+        tk.Button(button_row, text="📊 Detailed Stats", command=self.show_detailed_stats,
+                  font=("Arial", 12, "bold"), bg="#3498db", fg="white",
+                  padx=15, pady=8, width=20).pack(side=tk.LEFT, padx=5)
+
+        if not offline and not solo_only:
+            tk.Button(button_row, text="🏆 Leaderboard", command=self.show_leaderboard,
+                      font=("Arial", 12, "bold"), bg="#f39c12", fg="white",
+                      padx=15, pady=8, width=20).pack(side=tk.LEFT, padx=5)
+        else:
+            tk.Button(button_row, text="🏆 Leaderboard",
+                      command=lambda: messagebox.showinfo("Offline Mode", "Leaderboard requires online connection."),
+                      font=("Arial", 12, "bold"), bg="#95a5a6", fg="white",
+                      padx=15, pady=8, width=20).pack(side=tk.LEFT, padx=5)
 
         # Second row of buttons
-        bottom_buttons = tk.Frame(button_frame, bg="#2c3e50")
-        bottom_buttons.pack(pady=5)
+        bottom_buttons = tk.Frame(buttons_container, bg="#2c3e50")
+        bottom_buttons.pack(pady=(15, 0))
 
         if not offline:
             tk.Button(bottom_buttons, text="🚪 Logout", command=self.logout,
-                      font=("Arial", 12), bg="#e67e22", fg="white",
-                      padx=15, pady=8, width=25).pack()
+                      font=("Arial", 12, "bold"), bg="#e67e22", fg="white",
+                      padx=20, pady=10, width=30).pack()
         else:
-            # Show reset session button for offline players
             tk.Button(bottom_buttons, text="🔄 Reset Session", command=self.reset_current_session,
-                      font=("Arial", 12), bg="#f39c12", fg="white",
-                      padx=15, pady=8, width=25).pack()
+                      font=("Arial", 12, "bold"), bg="#f39c12", fg="white",
+                      padx=20, pady=10, width=30).pack()
 
-        if self.stats_manager:
-            self.show_user_stats(content)
-
-    def show_user_stats(self, parent):
+    def show_user_stats_in_frame(self, parent_frame):
+        """Show user statistics in a specific frame"""
         if not self.stats_manager:
             return
 
-        stats_frame = tk.Frame(parent, bg="#34495e", relief=tk.RAISED, bd=2)
-        stats_frame.pack(pady=15, padx=20, fill="x")
+        stats_frame = tk.Frame(parent_frame, bg="#34495e", relief=tk.RAISED, bd=2)
+        stats_frame.pack(fill="both", expand=True)
 
         tk.Label(stats_frame, text="📊 Your Statistics", font=("Arial", 14, "bold"),
                  bg="#34495e", fg="white").pack(pady=8)
@@ -865,23 +916,23 @@ class GameClient:
         self.current_tab = tk.StringVar(value="session")
 
         tk.Radiobutton(tab_frame, text="Current Session", variable=self.current_tab,
-                       value="session", command=lambda: self.update_stats_display(stats_frame),
+                       value="session", command=lambda: self.update_stats_display_in_frame(stats_frame),
                        bg="#34495e", fg="white", font=("Arial", 10, "bold"),
                        selectcolor="#3498db").pack(side=tk.LEFT, padx=5)
 
         tk.Radiobutton(tab_frame, text="All Time", variable=self.current_tab,
-                       value="global", command=lambda: self.update_stats_display(stats_frame),
+                       value="global", command=lambda: self.update_stats_display_in_frame(stats_frame),
                        bg="#34495e", fg="white", font=("Arial", 10, "bold"),
                        selectcolor="#3498db").pack(side=tk.LEFT, padx=5)
 
         # Stats display area
         self.stats_display_frame = tk.Frame(stats_frame, bg="#34495e")
-        self.stats_display_frame.pack(pady=5, fill="x")
+        self.stats_display_frame.pack(pady=5, fill="both", expand=True)
 
-        self.update_stats_display(stats_frame)
+        self.update_stats_display_in_frame(stats_frame)
 
-    def update_stats_display(self, parent_frame):
-        """Update the statistics display based on current tab"""
+    def update_stats_display_in_frame(self, parent_frame):
+        """Update the statistics display based on current tab in a specific frame"""
         # Clear existing display
         for widget in self.stats_display_frame.winfo_children():
             widget.destroy()
@@ -899,18 +950,19 @@ class GameClient:
                 ("Win Rate", display_stats["session_win_rate"])
             ]
 
-            tk.Label(self.stats_display_frame, text="Current Session Progress",
+            tk.Label(self.stats_display_frame, text="Current Session",
                      font=("Arial", 11, "bold"), bg="#34495e", fg="#f1c40f").pack(pady=2)
 
             for label, value in session_stats:
                 tk.Label(self.stats_display_frame, text=f"{label}: {value}",
-                         font=("Arial", 10), bg="#34495e", fg="#27ae60").pack(pady=1)
+                         font=("Arial", 10), bg="#34495e", fg="#27ae60").pack(pady=1, anchor="w", padx=10)
 
             # Show session completion status
             local_stats = self.stats_manager.get_local_stats()
             if local_stats["session_complete"]:
-                tk.Label(self.stats_display_frame, text="🏆 Session Complete! Starting new session...",
-                         font=("Arial", 9, "italic"), bg="#34495e", fg="#f39c12").pack(pady=2)
+                tk.Label(self.stats_display_frame, text="🏆 Session Complete!\nStarting new session...",
+                         font=("Arial", 9, "italic"), bg="#34495e", fg="#f39c12",
+                         justify=tk.CENTER).pack(pady=2)
 
         else:
             # Show global stats
@@ -927,7 +979,7 @@ class GameClient:
 
             for label, value in global_stats:
                 tk.Label(self.stats_display_frame, text=f"{label}: {value}",
-                         font=("Arial", 10), bg="#34495e", fg="#27ae60").pack(pady=1)
+                         font=("Arial", 10), bg="#34495e", fg="#27ae60").pack(pady=1, anchor="w", padx=10)
 
     def show_detailed_stats(self):
         """Show a detailed statistics window"""
