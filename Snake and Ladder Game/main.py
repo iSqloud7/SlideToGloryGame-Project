@@ -1,9 +1,3 @@
-#!/usr/bin/env python3
-"""
-Snake & Ladder Game - Fixed Unified Entry Point
-Simplified launcher that handles all game components
-"""
-
 import sys
 import subprocess
 import importlib
@@ -15,7 +9,6 @@ from pathlib import Path
 
 
 def check_python_version():
-    """Check if Python version is adequate"""
     if sys.version_info < (3, 8):
         print("❌ Error: Python 3.8 or higher required")
         print(f"   Current version: {sys.version}")
@@ -24,7 +17,6 @@ def check_python_version():
 
 
 def check_and_install_dependencies():
-    """Check and install required packages"""
     required_packages = {
         'websockets': 'websockets>=10.0',
         'fastapi': 'fastapi==0.104.1',
@@ -59,7 +51,6 @@ def check_and_install_dependencies():
 
 
 def check_required_files():
-    """Check if required files exist"""
     required_files = [
         'auth_server.py',
         'websocket_server.py',
@@ -83,7 +74,6 @@ def check_required_files():
 
 
 def start_auth_server():
-    """Start auth server in background"""
     try:
         print("🔄 Starting auth server...")
 
@@ -110,7 +100,6 @@ def start_auth_server():
 
 
 def start_websocket_server():
-    """Start WebSocket server in background"""
     try:
         print("🔄 Starting WebSocket server...")
 
@@ -137,7 +126,6 @@ def start_websocket_server():
 
 
 def start_game_client():
-    """Start game client"""
     try:
         print("🎮 Starting game client...")
         import game_client
@@ -150,10 +138,8 @@ def start_game_client():
 
 
 def check_server_status():
-    """Check server status"""
     import requests
 
-    # Check auth server
     try:
         response = requests.get("http://localhost:8000/status", timeout=5)
         if response.status_code == 200:
@@ -164,7 +150,6 @@ def check_server_status():
     except Exception:
         print("❌ Auth server: Offline")
 
-    # Check WebSocket server
     try:
         import websockets
         import asyncio
@@ -187,7 +172,6 @@ def check_server_status():
 
 
 def show_menu():
-    """Show main menu"""
     print("\n" + "=" * 50)
     print("🐍 Snake & Ladder Game")
     print("=" * 50)
@@ -208,7 +192,6 @@ def show_menu():
             if choice == "1":
                 print("\n🚀 Starting complete game...")
 
-                # Start servers
                 auth_proc = start_auth_server()
                 if not auth_proc:
                     print("Failed to start auth server")
@@ -251,7 +234,6 @@ def show_menu():
             elif choice == "4":
                 print("\n📡 Starting WebSocket server...")
                 try:
-                    # Import and run websocket server directly
                     import asyncio
                     from websocket_server import start_server
 
@@ -282,28 +264,23 @@ def show_menu():
 
 
 def main():
-    """Main function"""
     print("🔍 Snake & Ladder Game Launcher")
     print(f"OS: {platform.system()} {platform.release()}")
 
-    # Check Python version
     if not check_python_version():
         return
 
-    # Check files
     print("\n📁 Checking required files...")
     if not check_required_files():
         print("\n💡 Make sure all required files are present")
         return
 
-    # Check dependencies
     print("\n📦 Checking dependencies...")
     if not check_and_install_dependencies():
         return
 
     print("\n✅ All requirements met!")
 
-    # Show menu
     show_menu()
 
 

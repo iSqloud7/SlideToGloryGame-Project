@@ -1,9 +1,3 @@
-#!/usr/bin/env python3
-"""
-Simple test suite for Snake & Ladder Game
-Tests core functionality and dependencies
-"""
-
 import sys
 import os
 import json
@@ -12,7 +6,6 @@ import shutil
 
 
 def test_python_version():
-    """Test Python version compatibility"""
     print("Testing Python version...")
     if sys.version_info >= (3, 8):
         print("✅ Python version OK")
@@ -23,7 +16,6 @@ def test_python_version():
 
 
 def test_imports():
-    """Test required imports"""
     print("Testing imports...")
 
     required_modules = [
@@ -62,7 +54,6 @@ def test_imports():
 
 
 def test_file_structure():
-    """Test if required files exist"""
     print("Testing file structure...")
 
     required_files = [
@@ -87,22 +78,19 @@ def test_file_structure():
 
 
 def test_utils():
-    """Test utility functions"""
     print("Testing utilities...")
 
     try:
         from utils import (hash_password, validate_username, validate_password,
                            generate_invite_code, validate_invite_code)
 
-        # Test password hashing
         hashed = hash_password("test123")
-        if len(hashed) == 64:  # SHA-256 produces 64 hex chars
+        if len(hashed) == 64:
             print("✅ Password hashing works")
         else:
             print("❌ Password hashing failed")
             return False
 
-        # Test username validation
         valid, msg = validate_username("testuser")
         if valid:
             print("✅ Username validation works")
@@ -110,7 +98,6 @@ def test_utils():
             print(f"❌ Username validation failed: {msg}")
             return False
 
-        # Test invite code
         code = generate_invite_code()
         if validate_invite_code(code):
             print("✅ Invite code generation works")
@@ -126,27 +113,22 @@ def test_utils():
 
 
 def test_json_operations():
-    """Test JSON file operations"""
     print("Testing JSON operations...")
 
     try:
-        # Create temporary test data
         test_data = {
             "username": "testuser",
             "stats": {"wins": 5, "losses": 2},
             "profile": {"avatar": "🎮", "name": "Tester"}
         }
 
-        # Test saving and loading
         with tempfile.NamedTemporaryFile(mode='w', suffix='.json', delete=False) as f:
             json.dump(test_data, f, ensure_ascii=False, indent=2)
             temp_file = f.name
 
-        # Load back
         with open(temp_file, 'r', encoding='utf-8') as f:
             loaded_data = json.load(f)
 
-        # Compare
         if loaded_data == test_data:
             print("✅ JSON operations work")
             os.unlink(temp_file)
@@ -162,27 +144,23 @@ def test_json_operations():
 
 
 def test_game_constants():
-    """Test game constants and logic"""
     print("Testing game constants...")
 
     try:
         from snake_ladder_core import SNAKES, LADDERS
 
-        # Check snakes
         if len(SNAKES) > 0 and all(head > tail for head, tail in SNAKES.items()):
             print("✅ Snakes configuration valid")
         else:
             print("❌ Snakes configuration invalid")
             return False
 
-        # Check ladders
         if len(LADDERS) > 0 and all(bottom < top for bottom, top in LADDERS.items()):
             print("✅ Ladders configuration valid")
         else:
             print("❌ Ladders configuration invalid")
             return False
 
-        # Check no conflicts
         snake_positions = set(SNAKES.keys()) | set(SNAKES.values())
         ladder_positions = set(LADDERS.keys()) | set(LADDERS.values())
 
@@ -199,23 +177,19 @@ def test_game_constants():
 
 
 def test_tkinter_gui():
-    """Test basic tkinter functionality"""
     print("Testing GUI framework...")
 
     try:
         import tkinter as tk
 
-        # Create test window
         root = tk.Tk()
-        root.withdraw()  # Hide window
+        root.withdraw()
 
-        # Test basic widgets
         frame = tk.Frame(root)
         label = tk.Label(frame, text="Test")
         button = tk.Button(frame, text="Test Button")
         entry = tk.Entry(frame)
 
-        # Test if widgets can be created
         print("✅ Tkinter GUI framework works")
         root.destroy()
         return True
@@ -226,10 +200,8 @@ def test_tkinter_gui():
 
 
 def test_network_modules():
-    """Test network-related modules"""
     print("Testing network modules...")
 
-    # Test asyncio
     try:
         import asyncio
 
@@ -250,7 +222,6 @@ def test_network_modules():
         print(f"❌ Asyncio test failed: {e}")
         return False
 
-    # Test websockets (if available)
     try:
         import websockets
         print("✅ WebSockets available")
@@ -261,7 +232,6 @@ def test_network_modules():
 
 
 def run_all_tests():
-    """Run all tests"""
     print("=" * 50)
     print("Snake & Ladder Game - Test Suite")
     print("=" * 50)

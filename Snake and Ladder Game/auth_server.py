@@ -1,9 +1,3 @@
-#!/usr/bin/env python3
-"""
-Clean HTTP Auth Server for Snake & Ladder Game
-Simple user registration and authentication system
-"""
-
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
@@ -14,7 +8,6 @@ import os
 
 app = FastAPI(title="Snake & Ladder Auth Server", version="2.0")
 
-# CORS for local development
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -23,7 +16,6 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# User storage
 USERS_FILE = "users.json"
 
 
@@ -33,7 +25,6 @@ class UserCredentials(BaseModel):
 
 
 def load_users():
-    """Load users from JSON file"""
     if os.path.exists(USERS_FILE):
         try:
             with open(USERS_FILE, 'r', encoding='utf-8') as f:
@@ -44,7 +35,6 @@ def load_users():
 
 
 def save_users(users):
-    """Save users to JSON file"""
     try:
         with open(USERS_FILE, 'w', encoding='utf-8') as f:
             json.dump(users, f, indent=2, ensure_ascii=False)
@@ -55,12 +45,10 @@ def save_users(users):
 
 
 def hash_password(password):
-    """Hash password using SHA256"""
     return hashlib.sha256(password.encode('utf-8')).hexdigest()
 
 
 def validate_credentials(username, password):
-    """Validate user credentials"""
     username = username.strip()
     password = password.strip()
 
@@ -70,7 +58,6 @@ def validate_credentials(username, password):
     if len(password) < 4:
         return False, "Password must be at least 4 characters"
 
-    # Check for invalid characters
     invalid_chars = ['<', '>', '"', "'", '&', '/', '\\']
     for char in invalid_chars:
         if char in username or char in password:
@@ -81,7 +68,6 @@ def validate_credentials(username, password):
 
 @app.get("/")
 async def root():
-    """Server information"""
     return {
         "name": "Snake & Ladder Auth Server",
         "version": "2.0",
@@ -93,21 +79,17 @@ async def root():
 
 @app.post("/register")
 async def register(credentials: UserCredentials):
-    """Register new user"""
-    # Validate input
     valid, msg = validate_credentials(credentials.username, credentials.password)
     if not valid:
         raise HTTPException(status_code=400, detail=msg)
 
     users = load_users()
 
-    # Check if username exists (case insensitive)
     username_lower = credentials.username.lower()
     for existing_user in users.keys():
         if existing_user.lower() == username_lower:
             raise HTTPException(status_code=400, detail="Username already exists")
 
-    # Create new user
     users[credentials.username] = {
         "password_hash": hash_password(credentials.password),
         "created_at": datetime.datetime.now().isoformat(),
@@ -131,10 +113,8 @@ async def register(credentials: UserCredentials):
 
 @app.post("/login")
 async def login(credentials: UserCredentials):
-    """User login"""
     users = load_users()
 
-    # Find user (case insensitive)
     user_key = None
     username_lower = credentials.username.lower()
     for key in users.keys():
@@ -151,7 +131,6 @@ async def login(credentials: UserCredentials):
     if user_data["password_hash"] != password_hash:
         raise HTTPException(status_code=401, detail="Invalid username or password")
 
-    # Update last login
     user_data["last_login"] = datetime.datetime.now().isoformat()
     users[user_key] = user_data
     save_users(users)
@@ -166,7 +145,6 @@ async def login(credentials: UserCredentials):
 
 @app.get("/status")
 async def status():
-    """Server status"""
     users = load_users()
     return {
         "server": "active",
@@ -179,7 +157,6 @@ async def status():
 
 @app.get("/users")
 async def list_users():
-    """List all users (for debugging)"""
     users = load_users()
     user_list = []
 
@@ -200,7 +177,6 @@ if __name__ == "__main__":
     print("Status: http://localhost:8000/status")
     print("Press Ctrl+C to stop")
 
-    # Create users file if it doesn't exist
     if not os.path.exists(USERS_FILE):
         save_users({})
         print(f"Created {USERS_FILE}")
