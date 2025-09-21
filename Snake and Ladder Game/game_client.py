@@ -12,9 +12,21 @@ from requests.adapters import HTTPAdapter
 from urllib3.util.retry import Retry
 
 from snake_ladder_core import SnakeLadderGame
+from stats import StatsManager, sync_stats_with_server
 
-AUTH_SERVER = "https://0a6e78084c88.ngrok-free.app"
-WEBSOCKET_SERVER = "wss://cf049d2e9172.ngrok-free.app"
+# Try to import music system
+try:
+    from music_manager import initialize_music, play_background_music, pause_music, resume_music, stop_music, \
+        toggle_music, set_volume, get_music_info
+
+    MUSIC_AVAILABLE = True
+except ImportError:
+    print("Music system not available - music_manager.py not found")
+    MUSIC_AVAILABLE = False
+
+# Server configuration
+AUTH_SERVER = "http://localhost:8000"
+WEBSOCKET_SERVER = "ws://localhost:8765"
 
 
 def load_server_config():
@@ -42,10 +54,11 @@ class GameClient:
         self.root.configure(bg="#2a9d8f")
 
         self.current_user = None
-        # Start with empty user_data - don't initialize defaults yet
-        self.user_data = {}
         self.display_name = "Player"
         self.display_avatar = "🙂"
+
+        # Initialize stats manager (will be None until user logs in/plays offline)
+        self.stats_manager = None
 
         self.websocket = None
         self.session_id = None
@@ -56,29 +69,17 @@ class GameClient:
 
         self.http_session = self.create_http_session()
 
-        # Load local profile and stats FIRST
-        self.load_local_profile()
-        self.load_local_stats()  # Add this line
+        # Music system initialization
+        self.music_initialized = False
+        self.music_manager = None
 
-        # Only initialize defaults AFTER trying to load existing stats
-        self.initialize_user_data()
+        # Load local profile
+        self.load_local_profile()
 
         self.check_servers()
-    def initialize_user_data(self):
-        """Initialize user_data with default values if not already loaded"""
-        default_data = {
-            "games_played": 0,
-            "wins": 0,
-            "losses": 0,
-            "fastest_win": None
-        }
 
-        # Only set defaults for missing keys, don't overwrite existing data
-        for key, default_value in default_data.items():
-            if key not in self.user_data:
-                self.user_data[key] = default_value
-
-        print(f"User data initialized: {self.user_data}")
+        # Initialize music after server check
+        self.setup_music_controls()
 
     def create_http_session(self):
         session = requests.Session()
@@ -102,26 +103,6 @@ class GameClient:
         except:
             pass
 
-    def load_local_stats(self):
-        """Load stats from local file, preserving existing values if file doesn't exist"""
-        try:
-            if os.path.exists("stats.json"):
-                with open("stats.json", "r") as f:
-                    loaded_data = json.load(f)
-                    # Update user_data with loaded values, but don't overwrite if user_data already has values
-                    for key, value in loaded_data.items():
-                        self.user_data[key] = value
-                    print(f"Loaded local stats: {loaded_data}")
-            else:
-                print("No stats.json file found - keeping current stats")
-        except Exception as e:
-            print(f"Error loading local stats: {e}")
-            # Don't reset user_data on error
-
-    def save_local_stats(self):
-        with open("stats.json", "w") as f:
-            json.dump(self.user_data, f)
-
     def save_local_profile(self):
         try:
             with open("profile.json", "w") as f:
@@ -131,6 +112,283 @@ class GameClient:
                 }, f)
         except:
             pass
+
+    def setup_music_controls(self):
+        """Initialize music system and setup controls"""
+        if not MUSIC_AVAILABLE:
+            print("Music system not available")
+            return
+
+        try:
+            self.music_manager = initialize_music()
+            self.music_initialized = True
+            print(f"Music system initialized: {self.music_manager.audio_system}")
+
+            # Start background music if available
+            if self.music_manager.music_tracks:
+                play_background_music()
+                print(f"Started background music - {len(self.music_manager.music_tracks)} tracks available")
+            else:
+                print("No music files found. Add music files to the 'music' directory.")
+        except Exception as e:
+            print(f"Failed to initialize music: {e}")
+            self.music_initialized = False
+
+    def add_music_controls_to_main_menu(self, content):
+        """Add music controls to the main menu"""
+        if not self.music_initialized:
+            return
+
+        # Music controls frame
+        music_frame = tk.Frame(content, bg="#34495e", relief=tk.RAISED, bd=2)
+        music_frame.pack(pady=15, padx=20, fill="x")
+
+        tk.Label(music_frame, text="🎵 Music Controls", font=("Arial", 14, "bold"),
+                 bg="#34495e", fg="white").pack(pady=8)
+
+        # Current track info
+        self.music_info_label = tk.Label(music_frame, text="Loading...",
+                                         font=("Arial", 10),
+                                         bg="#34495e", fg="#bdc3c7",
+                                         wraplength=280)
+        self.music_info_label.pack(pady=5)
+
+        # Control buttons frame
+        controls_frame = tk.Frame(music_frame, bg="#34495e")
+        controls_frame.pack(pady=8)
+
+        # Row 1: Playback controls
+        playback_frame = tk.Frame(controls_frame, bg="#34495e")
+        playback_frame.pack(pady=2)
+
+        self.prev_button = tk.Button(playback_frame, text="⏮️", command=self.previous_track,
+                                     font=("Arial", 12), bg="#3498db", fg="white",
+                                     width=3, padx=5)
+        self.prev_button.pack(side=tk.LEFT, padx=2)
+
+        self.play_pause_button = tk.Button(playback_frame, text="⏸️", command=self.toggle_play_pause,
+                                           font=("Arial", 12), bg="#27ae60", fg="white",
+                                           width=3, padx=5)
+        self.play_pause_button.pack(side=tk.LEFT, padx=2)
+
+        self.stop_button = tk.Button(playback_frame, text="⏹️", command=self.stop_music_action,
+                                     font=("Arial", 12), bg="#e74c3c", fg="white",
+                                     width=3, padx=5)
+        self.stop_button.pack(side=tk.LEFT, padx=2)
+
+        self.next_button = tk.Button(playback_frame, text="⏭️", command=self.next_track,
+                                     font=("Arial", 12), bg="#3498db", fg="white",
+                                     width=3, padx=5)
+        self.next_button.pack(side=tk.LEFT, padx=2)
+
+        # Row 2: Volume control
+        volume_frame = tk.Frame(controls_frame, bg="#34495e")
+        volume_frame.pack(pady=5)
+
+        tk.Label(volume_frame, text="Volume:", font=("Arial", 10),
+                 bg="#34495e", fg="white").pack(side=tk.LEFT)
+
+        self.volume_scale = tk.Scale(volume_frame, from_=0, to=100, orient=tk.HORIZONTAL,
+                                     length=120, bg="#34495e", fg="white",
+                                     highlightbackground="#34495e",
+                                     command=self.on_volume_change)
+        if self.music_manager:
+            self.volume_scale.set(int(self.music_manager.volume * 100))
+        self.volume_scale.pack(side=tk.LEFT, padx=5)
+
+        # Row 3: Options
+        options_frame = tk.Frame(controls_frame, bg="#34495e")
+        options_frame.pack(pady=5)
+
+        self.music_toggle_button = tk.Button(options_frame, text="🎵 ON", command=self.toggle_music_action,
+                                             font=("Arial", 10), bg="#9b59b6", fg="white",
+                                             width=8)
+        self.music_toggle_button.pack(side=tk.LEFT, padx=2)
+
+        self.playlist_button = tk.Button(options_frame, text="📋 Playlist", command=self.show_playlist,
+                                         font=("Arial", 10), bg="#f39c12", fg="white",
+                                         width=8)
+        self.playlist_button.pack(side=tk.LEFT, padx=2)
+
+        # Start updating music info
+        self.update_music_info()
+
+    def toggle_play_pause(self):
+        """Toggle between play and pause"""
+        if not self.music_initialized:
+            return
+
+        info = get_music_info()
+        if info['status'] == 'playing':
+            if pause_music():
+                self.play_pause_button.config(text="▶️")
+            else:
+                # If pause failed, try to resume instead
+                resume_music()
+        elif info['status'] == 'paused':
+            if resume_music():
+                self.play_pause_button.config(text="⏸️")
+        elif info['status'] == 'stopped':
+            if play_background_music():
+                self.play_pause_button.config(text="⏸️")
+
+    def stop_music_action(self):
+        """Stop music playback"""
+        if not self.music_initialized:
+            return
+
+        stop_music()
+        if hasattr(self, 'play_pause_button'):
+            self.play_pause_button.config(text="▶️")
+
+    def next_track(self):
+        """Skip to next track"""
+        if not self.music_initialized:
+            return
+
+        if self.music_manager:
+            self.music_manager.next_track()
+            if hasattr(self, 'play_pause_button'):
+                self.play_pause_button.config(text="⏸️")
+
+    def previous_track(self):
+        """Go to previous track"""
+        if not self.music_initialized:
+            return
+
+        if self.music_manager:
+            self.music_manager.previous_track()
+            if hasattr(self, 'play_pause_button'):
+                self.play_pause_button.config(text="⏸️")
+
+    def on_volume_change(self, volume_str):
+        """Handle volume slider change"""
+        if not self.music_initialized:
+            return
+
+        try:
+            volume = float(volume_str) / 100.0
+            set_volume(volume)
+        except:
+            pass
+
+    def toggle_music_action(self):
+        """Toggle music on/off"""
+        if not self.music_initialized:
+            return
+
+        enabled = toggle_music()
+        if hasattr(self, 'music_toggle_button'):
+            self.music_toggle_button.config(text="🎵 ON" if enabled else "🎵 OFF",
+                                            bg="#9b59b6" if enabled else "#95a5a6")
+
+    def show_playlist(self):
+        """Show the music playlist window"""
+        if not self.music_initialized:
+            return
+
+        playlist_window = tk.Toplevel(self.root)
+        playlist_window.title("Music Playlist")
+        playlist_window.geometry("500x400")
+        playlist_window.configure(bg="#2c3e50")
+        playlist_window.transient(self.root)
+
+        # Header
+        tk.Label(playlist_window, text="🎵 Music Playlist", font=("Arial", 16, "bold"),
+                 bg="#2c3e50", fg="white").pack(pady=15)
+
+        # Playlist frame
+        list_frame = tk.Frame(playlist_window, bg="#34495e", relief=tk.SUNKEN, bd=2)
+        list_frame.pack(expand=True, fill="both", padx=20, pady=10)
+
+        # Scrollable listbox
+        scroll_frame = tk.Frame(list_frame)
+        scroll_frame.pack(expand=True, fill="both", padx=10, pady=10)
+
+        scrollbar = tk.Scrollbar(scroll_frame)
+        scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
+
+        self.playlist_listbox = tk.Listbox(scroll_frame, yscrollcommand=scrollbar.set,
+                                           bg="#2c3e50", fg="white", font=("Arial", 11),
+                                           selectbackground="#3498db")
+        self.playlist_listbox.pack(side=tk.LEFT, expand=True, fill="both")
+        scrollbar.config(command=self.playlist_listbox.yview)
+
+        # Populate playlist
+        if self.music_manager:
+            playlist = self.music_manager.get_playlist()
+            for i, track in enumerate(playlist):
+                self.playlist_listbox.insert(tk.END, f"{i + 1}. {track}")
+
+        # Control buttons
+        button_frame = tk.Frame(playlist_window, bg="#2c3e50")
+        button_frame.pack(pady=10)
+
+        tk.Button(button_frame, text="▶️ Play Selected", command=lambda: self.play_selected_track(),
+                  font=("Arial", 12), bg="#27ae60", fg="white",
+                  padx=15, pady=5).pack(side=tk.LEFT, padx=5)
+
+        tk.Button(button_frame, text="🔄 Refresh", command=lambda: self.refresh_playlist(),
+                  font=("Arial", 12), bg="#3498db", fg="white",
+                  padx=15, pady=5).pack(side=tk.LEFT, padx=5)
+
+        tk.Button(button_frame, text="Close", command=playlist_window.destroy,
+                  font=("Arial", 12), bg="#e74c3c", fg="white",
+                  padx=15, pady=5).pack(side=tk.LEFT, padx=5)
+
+    def play_selected_track(self):
+        """Play the selected track from playlist"""
+        if not hasattr(self, 'playlist_listbox'):
+            return
+
+        selection = self.playlist_listbox.curselection()
+        if selection and self.music_manager:
+            track_index = selection[0]
+            if track_index < len(self.music_manager.music_tracks):
+                track_path = self.music_manager.music_tracks[track_index]
+                self.music_manager.play_music(track_path)
+                if hasattr(self, 'play_pause_button'):
+                    self.play_pause_button.config(text="⏸️")
+
+    def refresh_playlist(self):
+        """Refresh the music playlist"""
+        if self.music_manager:
+            self.music_manager.scan_music_directory()
+            if hasattr(self, 'playlist_listbox'):
+                self.playlist_listbox.delete(0, tk.END)
+                playlist = self.music_manager.get_playlist()
+                for i, track in enumerate(playlist):
+                    self.playlist_listbox.insert(tk.END, f"{i + 1}. {track}")
+
+    def update_music_info(self):
+        """Update the music information display"""
+        if not self.music_initialized:
+            return
+
+        try:
+            info = get_music_info()
+
+            if hasattr(self, 'music_info_label'):
+                status_text = f"♪ {info['title']} - {info['status'].title()}"
+                if 'track_number' in info and 'total_tracks' in info:
+                    status_text += f" ({info['track_number']}/{info['total_tracks']})"
+
+                self.music_info_label.config(text=status_text)
+
+            # Update play/pause button
+            if hasattr(self, 'play_pause_button'):
+                if info['status'] == 'playing':
+                    self.play_pause_button.config(text="⏸️")
+                else:
+                    self.play_pause_button.config(text="▶️")
+
+        except Exception as e:
+            if hasattr(self, 'music_info_label'):
+                self.music_info_label.config(text="Music info unavailable")
+
+        # Schedule next update
+        if hasattr(self, 'root') and self.root.winfo_exists():
+            self.root.after(2000, self.update_music_info)  # Update every 2 seconds
 
     def check_servers(self):
         print(f"Checking servers...")
@@ -151,9 +409,7 @@ class GameClient:
                 "Auth server is not available. You can play offline multiplayer only."
             )
             self.current_user = "offline"
-            # Load stats for offline mode, but don't overwrite existing stats
-            self.load_local_stats()
-            self.initialize_user_data()  # Only fill in missing fields
+            self.stats_manager = StatsManager("offline_player")
             self.show_main_menu(offline=True)
         else:
             messagebox.showerror(
@@ -161,9 +417,7 @@ class GameClient:
                 f"Both servers are offline.\n\nChecked URLs:\nAuth: {AUTH_SERVER}\nWebSocket: {WEBSOCKET_SERVER}\n\nOnly solo play available."
             )
             self.current_user = "offline"
-            # Load stats for offline mode, but don't overwrite existing stats
-            self.load_local_stats()
-            self.initialize_user_data()  # Only fill in missing fields
+            self.stats_manager = StatsManager("offline_player")
             self.show_main_menu(solo_only=True)
 
     def check_auth_server(self):
@@ -328,83 +582,29 @@ class GameClient:
                     result = response.json()
                     self.current_user = result.get("username", username)
 
+                    # Initialize stats manager for this user
+                    self.stats_manager = StatsManager(self.current_user)
+
                     # Smart merging of server and local stats
                     server_user_data = result.get("user_data", {})
                     print(f"Server returned user_data: {server_user_data}")
-                    print(f"Local stats before merge: {self.user_data}")
 
                     if server_user_data:
-                        # Merge stats intelligently - take the higher values for cumulative stats
-                        merged_stats = {}
-
-                        # For cumulative stats, take the maximum
-                        merged_stats["games_played"] = max(
-                            server_user_data.get("games_played", 0),
-                            self.user_data.get("games_played", 0)
-                        )
-                        merged_stats["wins"] = max(
-                            server_user_data.get("wins", 0),
-                            self.user_data.get("wins", 0)
-                        )
-                        merged_stats["losses"] = max(
-                            server_user_data.get("losses", 0),
-                            self.user_data.get("losses", 0)
-                        )
-
-                        # For fastest_win, take the better (lower) time if both exist
-                        server_fastest = server_user_data.get("fastest_win")
-                        local_fastest = self.user_data.get("fastest_win")
-
-                        if server_fastest is not None and local_fastest is not None:
-                            merged_stats["fastest_win"] = min(server_fastest, local_fastest)
-                        elif server_fastest is not None:
-                            merged_stats["fastest_win"] = server_fastest
-                        elif local_fastest is not None:
-                            merged_stats["fastest_win"] = local_fastest
-                        else:
-                            merged_stats["fastest_win"] = None
-
-                        self.user_data = merged_stats
-                        print(f"Stats after smart merge: {self.user_data}")
-
-                        # Save merged stats locally
-                        self.save_local_stats()
+                        # Sync with server stats
+                        merged_stats = sync_stats_with_server(self.stats_manager, server_user_data)
+                        print(f"Stats after smart merge: {merged_stats}")
 
                         # If local stats were higher, sync them back to server
-                        if (merged_stats["games_played"] > server_user_data.get("games_played", 0) or
-                                merged_stats["wins"] > server_user_data.get("wins", 0) or
-                                merged_stats["losses"] > server_user_data.get("losses", 0)):
-
+                        if self.needs_server_sync(server_user_data, merged_stats):
                             print("Local stats were higher, syncing to server...")
-                            try:
-                                sync_response = self.http_session.post(
-                                    f"{AUTH_SERVER}/update_stats",
-                                    json={"username": self.current_user, "user_data": merged_stats},
-                                    headers=headers,
-                                    timeout=10
-                                )
-                                if sync_response.status_code == 200:
-                                    print("Successfully synced local stats to server")
-                                else:
-                                    print(f"Failed to sync stats to server: {sync_response.status_code}")
-                            except Exception as e:
-                                print(f"Error syncing stats to server: {e}")
+                            self.sync_stats_to_server(merged_stats)
                     else:
                         # Server has no user_data, keep local stats and upload them
                         print("Server has no user data, keeping local stats")
-                        if any(self.user_data.get(key, 0) > 0 for key in ["games_played", "wins", "losses"]):
+                        global_stats = self.stats_manager.get_global_stats()
+                        if any(global_stats.get(key, 0) > 0 for key in ["games_played", "wins", "losses"]):
                             print("Uploading local stats to server...")
-                            try:
-                                sync_response = self.http_session.post(
-                                    f"{AUTH_SERVER}/update_stats",
-                                    json={"username": self.current_user, "user_data": self.user_data},
-                                    headers=headers,
-                                    timeout=10
-                                )
-                                if sync_response.status_code == 200:
-                                    print("Successfully uploaded local stats to server")
-                            except Exception as e:
-                                print(f"Error uploading stats to server: {e}")
+                            self.sync_stats_to_server(global_stats)
 
                     self.display_name = self.current_user
 
@@ -419,6 +619,7 @@ class GameClient:
             except Exception as e:
                 print(f"Login error: {e}")
                 status_label.config(text="Connection error", fg="#e74c3c")
+
         tk.Button(button_frame, text="🔑 Login", command=handle_login,
                   font=("Arial", 14, "bold"), bg="#27ae60", fg="white",
                   padx=20, pady=10, width=12).pack(pady=5)
@@ -429,7 +630,7 @@ class GameClient:
 
         # Status label
         status_label = tk.Label(form, text="", font=("Arial", 10),
-                               bg="#2a9d8f", fg="white", wraplength=350)
+                                bg="#2a9d8f", fg="white", wraplength=350)
         status_label.pack(pady=10)
 
         # Key bindings
@@ -524,7 +725,7 @@ class GameClient:
                 if response.status_code == 200:
                     status_label.config(text="Account created successfully!", fg="#27ae60")
                     messagebox.showinfo("Registration Successful",
-                                      "Account created successfully!\nYou can now login with your credentials.")
+                                        "Account created successfully!\nYou can now login with your credentials.")
                     register_window.destroy()
                 else:
                     error = response.json().get("detail", "Registration failed")
@@ -546,7 +747,7 @@ class GameClient:
 
         # Status label
         status_label = tk.Label(form, text="", font=("Arial", 10),
-                               bg="#2a9d8f", fg="white", wraplength=350)
+                                bg="#2a9d8f", fg="white", wraplength=350)
         status_label.pack(pady=10)
 
         # Key bindings
@@ -558,24 +759,15 @@ class GameClient:
         self.current_user = "offline"
         self.display_name = self.display_name or "Player"
 
-        # Load local stats for offline play - this should preserve existing stats
-        self.load_local_stats()
+        # Initialize stats manager for offline play
+        self.stats_manager = StatsManager("offline_player")
 
-        # Initialize any missing stats with defaults (don't overwrite existing values)
-        self.initialize_user_data()
-
-        print(f"Playing offline with stats: {self.user_data}")
         messagebox.showinfo("Offline Mode", "Playing in offline mode. Online features disabled.")
         self.show_main_menu(offline=True)
 
     def show_main_menu(self, offline=False, solo_only=False):
-        # Ensure stats are loaded when showing main menu in offline mode
-        if offline or solo_only:
-            self.load_local_stats()
-            self.initialize_user_data()
-
         self.clear_window()
-        self.root.geometry("600x650")
+        self.root.geometry("600x800")  # Made taller for music controls
         self.root.title(f"Snake & Ladder - {self.display_name}")
 
         header = tk.Frame(self.root, bg="#34495e", height=100)
@@ -614,42 +806,373 @@ class GameClient:
                       command=self.join_multiplayer, bg="#3498db", fg="white",
                       padx=25, pady=12, width=25).pack(pady=10)
 
+        # Add music controls here
+        if self.music_initialized:
+            self.add_music_controls_to_main_menu(content)
+
         button_frame = tk.Frame(content, bg="#2c3e50")
         button_frame.pack(pady=20)
 
-        tk.Button(button_frame, text="👤 Edit Profile", command=self.show_profile,
-                  font=("Arial", 14), bg="#9b59b6", fg="white",
+        # First row of buttons
+        top_buttons = tk.Frame(button_frame, bg="#2c3e50")
+        top_buttons.pack(pady=5)
+
+        tk.Button(top_buttons, text="👤 Edit Profile", command=self.show_profile,
+                  font=("Arial", 12), bg="#9b59b6", fg="white",
                   padx=15, pady=8, width=12).pack(side=tk.LEFT, padx=5)
 
-        if not offline:
-            tk.Button(button_frame, text="🚪 Logout", command=self.logout,
-                      font=("Arial", 14), bg="#e67e22", fg="white",
-                      padx=15, pady=8, width=10).pack(side=tk.RIGHT, padx=5)
+        tk.Button(top_buttons, text="📊 Detailed Stats", command=self.show_detailed_stats,
+                  font=("Arial", 12), bg="#3498db", fg="white",
+                  padx=15, pady=8, width=12).pack(side=tk.LEFT, padx=5)
 
-        if self.user_data:
+        if not offline and not solo_only:  # Only show for online players
+            tk.Button(top_buttons, text="🏆 Leaderboard", command=self.show_leaderboard,
+                      font=("Arial", 12), bg="#f39c12", fg="white",
+                      padx=15, pady=8, width=12).pack(side=tk.LEFT, padx=5)
+
+        # Second row of buttons
+        bottom_buttons = tk.Frame(button_frame, bg="#2c3e50")
+        bottom_buttons.pack(pady=5)
+
+        if not offline:
+            tk.Button(bottom_buttons, text="🚪 Logout", command=self.logout,
+                      font=("Arial", 12), bg="#e67e22", fg="white",
+                      padx=15, pady=8, width=25).pack()
+        else:
+            # Show reset session button for offline players
+            tk.Button(bottom_buttons, text="🔄 Reset Session", command=self.reset_current_session,
+                      font=("Arial", 12), bg="#f39c12", fg="white",
+                      padx=15, pady=8, width=25).pack()
+
+        if self.stats_manager:
             self.show_user_stats(content)
 
     def show_user_stats(self, parent):
+        if not self.stats_manager:
+            return
+
         stats_frame = tk.Frame(parent, bg="#34495e", relief=tk.RAISED, bd=2)
         stats_frame.pack(pady=15, padx=20, fill="x")
 
         tk.Label(stats_frame, text="📊 Your Statistics", font=("Arial", 14, "bold"),
                  bg="#34495e", fg="white").pack(pady=8)
 
-        games = self.user_data.get('games_played', 0)
-        wins = self.user_data.get('wins', 0)
-        losses = self.user_data.get('losses', 0)
-        fastest_win = self.user_data.get('fastest_win')
+        # Create tabs for Local vs Global stats
+        tab_frame = tk.Frame(stats_frame, bg="#34495e")
+        tab_frame.pack(pady=5)
 
-        tk.Label(stats_frame, text=f"Games: {games} • Wins: {wins} • Losses: {losses}",
-                 font=("Arial", 11), bg="#34495e", fg="#27ae60").pack(pady=5)
+        # Tab buttons
+        self.current_tab = tk.StringVar(value="session")
 
-        if fastest_win:
-            minutes = fastest_win // 60
-            seconds = fastest_win % 60
-            time_str = f"{minutes}m {seconds}s" if minutes > 0 else f"{seconds}s"
-            tk.Label(stats_frame, text=f"⚡ Fastest Win: {time_str}",
-                     font=("Arial", 11), bg="#34495e", fg="#f1c40f").pack(pady=5)
+        tk.Radiobutton(tab_frame, text="Current Session", variable=self.current_tab,
+                       value="session", command=lambda: self.update_stats_display(stats_frame),
+                       bg="#34495e", fg="white", font=("Arial", 10, "bold"),
+                       selectcolor="#3498db").pack(side=tk.LEFT, padx=5)
+
+        tk.Radiobutton(tab_frame, text="All Time", variable=self.current_tab,
+                       value="global", command=lambda: self.update_stats_display(stats_frame),
+                       bg="#34495e", fg="white", font=("Arial", 10, "bold"),
+                       selectcolor="#3498db").pack(side=tk.LEFT, padx=5)
+
+        # Stats display area
+        self.stats_display_frame = tk.Frame(stats_frame, bg="#34495e")
+        self.stats_display_frame.pack(pady=5, fill="x")
+
+        self.update_stats_display(stats_frame)
+
+    def update_stats_display(self, parent_frame):
+        """Update the statistics display based on current tab"""
+        # Clear existing display
+        for widget in self.stats_display_frame.winfo_children():
+            widget.destroy()
+
+        if not self.stats_manager:
+            return
+
+        display_stats = self.stats_manager.get_display_stats()
+
+        if self.current_tab.get() == "session":
+            # Show session stats
+            session_stats = [
+                ("Progress", display_stats["session_progress"]),
+                ("Games", display_stats["session_games"]),
+                ("Win Rate", display_stats["session_win_rate"])
+            ]
+
+            tk.Label(self.stats_display_frame, text="Current Session Progress",
+                     font=("Arial", 11, "bold"), bg="#34495e", fg="#f1c40f").pack(pady=2)
+
+            for label, value in session_stats:
+                tk.Label(self.stats_display_frame, text=f"{label}: {value}",
+                         font=("Arial", 10), bg="#34495e", fg="#27ae60").pack(pady=1)
+
+            # Show session completion status
+            local_stats = self.stats_manager.get_local_stats()
+            if local_stats["session_complete"]:
+                tk.Label(self.stats_display_frame, text="🏆 Session Complete! Starting new session...",
+                         font=("Arial", 9, "italic"), bg="#34495e", fg="#f39c12").pack(pady=2)
+
+        else:
+            # Show global stats
+            global_stats = [
+                ("Total Games", display_stats["total_games"]),
+                ("Wins/Losses", f"{display_stats['total_wins']}/{display_stats['total_losses']}"),
+                ("Win Rate", display_stats["overall_win_rate"]),
+                ("Best Streak", display_stats["best_win_streak"]),
+                ("Fastest Win", display_stats["fastest_win"])
+            ]
+
+            tk.Label(self.stats_display_frame, text="All-Time Statistics",
+                     font=("Arial", 11, "bold"), bg="#34495e", fg="#f1c40f").pack(pady=2)
+
+            for label, value in global_stats:
+                tk.Label(self.stats_display_frame, text=f"{label}: {value}",
+                         font=("Arial", 10), bg="#34495e", fg="#27ae60").pack(pady=1)
+
+    def show_detailed_stats(self):
+        """Show a detailed statistics window"""
+        if not self.stats_manager:
+            messagebox.showinfo("No Stats", "No statistics available yet.")
+            return
+
+        stats_window = tk.Toplevel(self.root)
+        stats_window.title("Detailed Statistics")
+        stats_window.geometry("600x500")
+        stats_window.configure(bg="#2c3e50")
+        stats_window.transient(self.root)
+
+        # Header
+        tk.Label(stats_window, text="📊 Detailed Statistics",
+                 font=("Arial", 18, "bold"), bg="#2c3e50", fg="white").pack(pady=15)
+
+        # Create notebook for tabs
+        notebook_frame = tk.Frame(stats_window, bg="#2c3e50")
+        notebook_frame.pack(expand=True, fill="both", padx=20, pady=10)
+
+        # Session stats
+        session_frame = tk.LabelFrame(notebook_frame, text="Current Session",
+                                      font=("Arial", 12, "bold"), bg="#34495e", fg="white")
+        session_frame.pack(fill="x", pady=5)
+
+        display_stats = self.stats_manager.get_display_stats()
+        local_stats = self.stats_manager.get_local_stats()
+
+        session_info = [
+            f"Progress: {display_stats['session_progress']}",
+            f"Games Played: {display_stats['session_games']}",
+            f"Win Rate: {display_stats['session_win_rate']}",
+            f"Session Started: {local_stats.get('session_start', 'N/A')[:19] if local_stats.get('session_start') else 'N/A'}"
+        ]
+
+        for info in session_info:
+            tk.Label(session_frame, text=info, font=("Arial", 10),
+                     bg="#34495e", fg="#bdc3c7").pack(anchor="w", padx=10, pady=2)
+
+        # Global stats
+        global_frame = tk.LabelFrame(notebook_frame, text="All-Time Statistics",
+                                     font=("Arial", 12, "bold"), bg="#34495e", fg="white")
+        global_frame.pack(fill="x", pady=5)
+
+        global_info = [
+            f"Total Games: {display_stats['total_games']}",
+            f"Wins: {display_stats['total_wins']} | Losses: {display_stats['total_losses']}",
+            f"Overall Win Rate: {display_stats['overall_win_rate']}",
+            f"Current Win Streak: {display_stats['current_win_streak']}",
+            f"Best Win Streak: {display_stats['best_win_streak']}",
+            f"Fastest Win: {display_stats['fastest_win']}",
+            f"Longest Game: {display_stats['longest_game']}",
+            f"Total Playtime: {display_stats['total_playtime']}"
+        ]
+
+        for info in global_info:
+            tk.Label(global_frame, text=info, font=("Arial", 10),
+                     bg="#34495e", fg="#bdc3c7").pack(anchor="w", padx=10, pady=2)
+
+        # Buttons
+        button_frame = tk.Frame(stats_window, bg="#2c3e50")
+        button_frame.pack(pady=15)
+
+        tk.Button(button_frame, text="Reset Session",
+                  command=self.reset_current_session,
+                  font=("Arial", 12), bg="#e67e22", fg="white",
+                  padx=15, pady=5).pack(side=tk.LEFT, padx=5)
+
+        tk.Button(button_frame, text="Close", command=stats_window.destroy,
+                  font=("Arial", 12), bg="#95a5a6", fg="white",
+                  padx=20, pady=5).pack(side=tk.RIGHT, padx=5)
+
+    def reset_current_session(self):
+        """Reset the current session after confirmation"""
+        if not self.stats_manager:
+            return
+
+        result = messagebox.askyesno("Reset Session",
+                                     "Are you sure you want to reset your current session? This will start a new session from 0 wins.")
+        if result:
+            self.stats_manager.reset_session()
+            messagebox.showinfo("Session Reset", "Your session has been reset. Good luck!")
+            # Refresh the main menu to show updated stats
+            self.show_main_menu()
+
+    def show_leaderboard(self):
+        """Show the global leaderboard"""
+        if self.current_user == "offline":
+            messagebox.showinfo("Offline Mode", "Leaderboard is not available in offline mode.")
+            return
+
+        # Create leaderboard window
+        leaderboard_window = tk.Toplevel(self.root)
+        leaderboard_window.title("Global Leaderboard")
+        leaderboard_window.geometry("800x600")
+        leaderboard_window.configure(bg="#2c3e50")
+        leaderboard_window.transient(self.root)
+
+        # Header
+        header_frame = tk.Frame(leaderboard_window, bg="#34495e", height=80)
+        header_frame.pack(fill="x")
+        header_frame.pack_propagate(False)
+
+        tk.Label(header_frame, text="🏆 Global Leaderboard",
+                 font=("Arial", 20, "bold"), bg="#34495e", fg="white").pack(pady=20)
+
+        # Loading label
+        loading_label = tk.Label(leaderboard_window, text="Loading leaderboard...",
+                                 font=("Arial", 14), bg="#2c3e50", fg="white")
+        loading_label.pack(pady=50)
+
+        # Fetch leaderboard data in background
+        def fetch_leaderboard():
+            try:
+                headers = {
+                    'ngrok-skip-browser-warning': 'true',
+                    'User-Agent': 'SnakeLadderGame/1.0'
+                }
+                response = self.http_session.get(f"{AUTH_SERVER}/leaderboard",
+                                                 timeout=10, headers=headers)
+
+                if response.status_code == 200:
+                    data = response.json()
+                    self.root.after(0, lambda: self.display_leaderboard(leaderboard_window,
+                                                                        loading_label, data))
+                else:
+                    self.root.after(0, lambda: self.show_leaderboard_error(loading_label,
+                                                                           "Failed to fetch leaderboard"))
+            except Exception as e:
+                error_msg = f"Error loading leaderboard: {str(e)}"
+                self.root.after(0, lambda: self.show_leaderboard_error(loading_label, error_msg))
+
+        # Start background fetch
+        import threading
+        threading.Thread(target=fetch_leaderboard, daemon=True).start()
+
+    def display_leaderboard(self, window, loading_label, data):
+        """Display the leaderboard data"""
+        loading_label.destroy()
+
+        leaderboard = data.get("leaderboard", [])
+        total_players = data.get("total_players", 0)
+
+        if not leaderboard:
+            tk.Label(window, text="No players found on leaderboard.",
+                     font=("Arial", 14), bg="#2c3e50", fg="white").pack(pady=50)
+            return
+
+        # Info frame
+        info_frame = tk.Frame(window, bg="#34495e")
+        info_frame.pack(fill="x", padx=20, pady=10)
+
+        tk.Label(info_frame, text=f"Showing top {len(leaderboard)} of {total_players} players",
+                 font=("Arial", 12), bg="#34495e", fg="#bdc3c7").pack()
+
+        # Create scrollable frame
+        canvas_frame = tk.Frame(window, bg="#2c3e50")
+        canvas_frame.pack(expand=True, fill="both", padx=20, pady=10)
+
+        canvas = tk.Canvas(canvas_frame, bg="#2c3e50", highlightthickness=0)
+        scrollbar = tk.Scrollbar(canvas_frame, orient="vertical", command=canvas.yview)
+        scrollable_frame = tk.Frame(canvas, bg="#2c3e50")
+
+        scrollable_frame.bind(
+            "<Configure>",
+            lambda e: canvas.configure(scrollregion=canvas.bbox("all"))
+        )
+
+        canvas.create_window((0, 0), window=scrollable_frame, anchor="nw")
+        canvas.configure(yscrollcommand=scrollbar.set)
+
+        canvas.pack(side="left", fill="both", expand=True)
+        scrollbar.pack(side="right", fill="y")
+
+        # Header row
+        header_frame = tk.Frame(scrollable_frame, bg="#34495e", relief=tk.RAISED, bd=2)
+        header_frame.pack(fill="x", pady=(0, 5))
+
+        headers = ["Rank", "Player", "Games", "Wins", "Win Rate", "Best Streak", "Fastest Win"]
+        header_widths = [8, 15, 8, 8, 10, 12, 12]
+
+        for i, (header, width) in enumerate(zip(headers, header_widths)):
+            tk.Label(header_frame, text=header, font=("Arial", 11, "bold"),
+                     bg="#34495e", fg="white", width=width).grid(row=0, column=i, padx=2, pady=5)
+
+        # Player rows
+        for rank, player in enumerate(leaderboard, 1):
+            # Highlight current user
+            bg_color = "#3498db" if player["username"].lower() == self.current_user.lower() else "#2c3e50"
+            text_color = "white" if player["username"].lower() == self.current_user.lower() else "#bdc3c7"
+
+            player_frame = tk.Frame(scrollable_frame, bg=bg_color, relief=tk.RAISED, bd=1)
+            player_frame.pack(fill="x", pady=1)
+
+            # Format fastest win
+            fastest_win = player.get("fastest_win")
+            if fastest_win:
+                if fastest_win < 60:
+                    fastest_win_str = f"{fastest_win}s"
+                else:
+                    minutes = fastest_win // 60
+                    seconds = fastest_win % 60
+                    fastest_win_str = f"{minutes}m {seconds}s"
+            else:
+                fastest_win_str = "N/A"
+
+            values = [
+                str(rank),
+                player["username"][:13] + "..." if len(player["username"]) > 13 else player["username"],
+                str(player["games_played"]),
+                str(player["wins"]),
+                f"{player['win_rate']}%",
+                str(player["best_win_streak"]),
+                fastest_win_str
+            ]
+
+            for i, (value, width) in enumerate(zip(values, header_widths)):
+                font_weight = "bold" if bg_color == "#3498db" else "normal"
+                tk.Label(player_frame, text=value, font=("Arial", 10, font_weight),
+                         bg=bg_color, fg=text_color, width=width).grid(row=0, column=i, padx=2, pady=3)
+
+        # Close button
+        tk.Button(window, text="Close", command=window.destroy,
+                  font=("Arial", 12), bg="#e74c3c", fg="white",
+                  padx=20, pady=8).pack(pady=20)
+
+    def show_leaderboard_error(self, loading_label, error_msg):
+        """Show error message when leaderboard fails to load"""
+        loading_label.config(text=error_msg, fg="#e74c3c")
+
+        # Add retry button
+        retry_frame = tk.Frame(loading_label.master, bg="#2c3e50")
+        retry_frame.pack(pady=20)
+
+        tk.Button(retry_frame, text="Retry", command=lambda: self.retry_leaderboard(loading_label.master),
+                  font=("Arial", 12), bg="#3498db", fg="white", padx=20, pady=8).pack(side=tk.LEFT, padx=5)
+
+        tk.Button(retry_frame, text="Close", command=loading_label.master.destroy,
+                  font=("Arial", 12), bg="#e74c3c", fg="white", padx=20, pady=8).pack(side=tk.LEFT, padx=5)
+
+    def retry_leaderboard(self, window):
+        """Retry loading the leaderboard"""
+        window.destroy()
+        self.show_leaderboard()
 
     def show_profile(self):
         profile_window = tk.Toplevel(self.root)
@@ -702,9 +1225,63 @@ class GameClient:
 
     def logout(self):
         self.current_user = None
-        # Don't reset user_data to zeros - this preserves offline stats
-        # When logging back in, server stats will overwrite these anyway
+        self.stats_manager = None
         self.show_welcome_screen()
+
+    def needs_server_sync(self, server_stats, merged_stats):
+        """Check if we need to sync stats back to server"""
+        for key in ["games_played", "wins", "losses"]:
+            if merged_stats.get(key, 0) > server_stats.get(key, 0):
+                return True
+        return False
+
+    def sync_stats_to_server(self, stats_data):
+        """Sync statistics to the server"""
+        if not self.current_user or self.current_user == "offline":
+            return
+
+        try:
+            headers = {
+                'ngrok-skip-browser-warning': 'true',
+                'User-Agent': 'SnakeLadderGame/1.0',
+                'Content-Type': 'application/json'
+            }
+
+            response = self.http_session.post(
+                f"{AUTH_SERVER}/update_stats",
+                json={"username": self.current_user, "user_data": stats_data},
+                headers=headers,
+                timeout=10
+            )
+
+            if response.status_code == 200:
+                print("Successfully synced stats to server")
+            else:
+                print(f"Failed to sync stats: {response.status_code}")
+
+        except Exception as e:
+            print(f"Error syncing stats to server: {e}")
+
+    def cleanup_multiplayer(self):
+        """Clean up multiplayer connections"""
+        if self.websocket:
+            try:
+                def close_websocket_async():
+                    try:
+                        if hasattr(self.websocket, 'close'):
+                            asyncio.create_task(self.websocket.close())
+                    except:
+                        pass
+
+                threading.Thread(target=close_websocket_async, daemon=True).start()
+            except:
+                pass
+            self.websocket = None
+
+        self.session_id = None
+        self.invite_code = None
+        self.peer_info = None
+        self.game_instance = None
 
     def start_solo_game(self):
         self.start_game(
@@ -925,9 +1502,7 @@ class GameClient:
     def on_game_end(self, winner_idx, game_duration=None):
         self.root.deiconify()
 
-        # Initialize is_winner as None (for when game is quit without a winner)
         is_winner = None
-
         if winner_idx is not None:
             # Determine if current player won
             if hasattr(self, 'is_host') and self.is_host:
@@ -938,63 +1513,26 @@ class GameClient:
                 # Fallback for solo mode
                 is_winner = (winner_idx == 0)
 
-            self.user_data["games_played"] = self.user_data.get("games_played", 0) + 1
+            # Record the game in statistics
+            if self.stats_manager and game_duration:
+                opponent = "Bot" if hasattr(self.game_instance,
+                                            'mode') and self.game_instance.mode == 'solo' else "Player"
+                self.stats_manager.record_game(is_winner, game_duration, opponent)
 
-            if is_winner:
-                self.user_data["wins"] = self.user_data.get("wins", 0) + 1
-                if game_duration:
-                    fastest = self.user_data.get("fastest_win")
-                    if fastest is None or game_duration < fastest:
-                        self.user_data["fastest_win"] = game_duration
-            else:
-                self.user_data["losses"] = self.user_data.get("losses", 0) + 1
+                # Sync to server if online
+                if self.current_user and self.current_user != "offline":
+                    self.sync_stats_to_server(self.stats_manager.get_global_stats())
 
-        # Save + Sync stats
-        self.save_local_stats()
-        if self.current_user and self.current_user != "offline":
-            try:
-                headers = {
-                    'ngrok-skip-browser-warning': 'true',
-                    'User-Agent': 'SnakeLadderGame/1.0',
-                    'Content-Type': 'application/json'
-                }
-                self.http_session.post(
-                    f"{AUTH_SERVER}/update_stats",
-                    json={"username": self.current_user, "user_data": self.user_data},
-                    headers=headers,
-                    timeout=10
-                )
-            except Exception as e:
-                print(f"Could not sync stats: {e}")
+        # Reset WebSocket and show results
+        self.cleanup_multiplayer()
 
-        # Reset WebSocket
-        if self.websocket:
-            try:
-                def close_websocket_async():
-                    try:
-                        if hasattr(self.websocket, 'close'):
-                            asyncio.create_task(self.websocket.close())
-                    except:
-                        pass
-
-                threading.Thread(target=close_websocket_async, daemon=True).start()
-            except:
-                pass
-            self.websocket = None
-
-        self.session_id = None
-        self.invite_code = None
-        self.peer_info = None
-        self.game_instance = None
-
-        # Show Game Over window only if there was actually a winner
         if winner_idx is not None:
             self.show_game_over_window(is_winner, game_duration)
         else:
-            # Just return to main menu if game was quit
             self.show_main_menu()
 
     def show_game_over_window(self, is_winner, game_duration=None):
+        """Show a beautiful game over dialog with winner announcement and options"""
         win_text = "🏆 You Win!" if is_winner else "😢 You Lost!"
         duration_text = ""
         if game_duration:
@@ -1042,32 +1580,14 @@ class GameClient:
         except Exception as e:
             print(f"Application error: {e}")
         finally:
-            if self.websocket:
-                try:
-                    def close_websocket_async():
-                        try:
-                            if hasattr(self.websocket, 'close'):
-                                asyncio.create_task(self.websocket.close())
-                        except:
-                            pass
-
-                    threading.Thread(target=close_websocket_async, daemon=True).start()
-                except:
-                    pass
+            self.cleanup_multiplayer()
+            if self.music_initialized and self.music_manager:
+                self.music_manager.cleanup()
 
     def on_closing(self):
-        if self.websocket:
-            try:
-                def close_websocket_async():
-                    try:
-                        if hasattr(self.websocket, 'close'):
-                            asyncio.create_task(self.websocket.close())
-                    except:
-                        pass
-
-                threading.Thread(target=close_websocket_async, daemon=True).start()
-            except:
-                pass
+        if self.music_initialized and self.music_manager:
+            self.music_manager.cleanup()
+        self.cleanup_multiplayer()
         self.root.destroy()
 
 

@@ -1,0 +1,7 @@
+{
+  "volume": 1.0,
+  "music_enabled": true,
+  "sound_effects_enabled": true,
+  "repeat_mode": "playlist",
+  "shuffle_mode": false
+}

@@ -598,7 +598,7 @@ class SnakeLadderGame:
 
     def create_tokens(self):
         self.tokens = []
-        colors = ["#e74c3c", "#3498db"]
+        colors = ["#c0392b", "#1e3a8a"]
 
         for i in range(2):
             token = self.canvas.create_text(
