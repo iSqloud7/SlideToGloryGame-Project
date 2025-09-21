@@ -24,9 +24,13 @@ except ImportError:
     print("Music system not available - music_manager.py not found")
     MUSIC_AVAILABLE = False
 
-# Server configuration
-AUTH_SERVER = "http://localhost:8000"
-WEBSOCKET_SERVER = "ws://localhost:8765"
+# Localhost (vs Bot, on two terminals in one machine)
+# AUTH_SERVER = "http://localhost:8000"
+# WEBSOCKET_SERVER = "ws://localhost:8765"
+
+# Internet (player1 vs player2)
+AUTH_SERVER = "https://0abeb0f456d9.ngrok-free.app/"
+WEBSOCKET_SERVER = "wss://4a094aa5a874.ngrok-free.app"
 
 
 def load_server_config():

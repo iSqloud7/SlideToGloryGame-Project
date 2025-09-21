@@ -1,6 +1,6 @@
 {
-  "volume": 0.5,
-  "music_enabled": false,
+  "volume": 0.47,
+  "music_enabled": true,
   "sound_effects_enabled": true,
   "repeat_mode": "playlist",
   "shuffle_mode": false

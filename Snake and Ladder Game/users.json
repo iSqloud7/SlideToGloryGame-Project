@@ -46,5 +46,53 @@
       "total_playtime": 0,
       "last_played": null
     }
+  },
+  "player1": {
+    "password_hash": "13d65aceb53ab1887e7decba787dcad6d8022a39d63e9949b38edfe051a9e036",
+    "created_at": "2025-09-21T22:42:15.695715",
+    "last_login": "2025-09-21T22:51:14.600173",
+    "stats": {
+      "games_played": 3,
+      "wins": 0,
+      "losses": 3,
+      "fastest_win": null,
+      "longest_game": 242,
+      "win_streak": 0,
+      "best_win_streak": 0,
+      "total_playtime": 665,
+      "last_played": "2025-09-21T22:54:24.690759"
+    }
+  },
+  "marija": {
+    "password_hash": "015ef7cb46d3c512fd27798011b106ec8a3574fd95877a65025cbe836eed75d5",
+    "created_at": "2025-09-21T22:42:54.883574",
+    "last_login": "2025-09-21T22:43:02.136434",
+    "stats": {
+      "games_played": 1,
+      "wins": 1,
+      "losses": 0,
+      "fastest_win": 241,
+      "longest_game": 241,
+      "win_streak": 1,
+      "best_win_streak": 1,
+      "total_playtime": 241,
+      "last_played": "2025-09-21T22:46:59.466100"
+    }
+  },
+  "player2": {
+    "password_hash": "c48d15e04e723f50fcf2ea92ff6c7f92c24fd6c4d100873ed16848822036e042",
+    "created_at": "2025-09-21T22:49:24.760465",
+    "last_login": "2025-09-21T22:49:30.784040",
+    "stats": {
+      "games_played": 0,
+      "wins": 0,
+      "losses": 0,
+      "fastest_win": null,
+      "longest_game": null,
+      "win_streak": 0,
+      "best_win_streak": 0,
+      "total_playtime": 0,
+      "last_played": null
+    }
   }
 }
